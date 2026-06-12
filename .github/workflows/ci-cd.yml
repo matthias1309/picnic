@@ -103,13 +103,13 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.UBERSPACE_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.UBERSPACE_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.UBERSPACE_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to Uberspace
         run: |
-          ssh -i ~/.ssh/id_rsa -p ${{ secrets.UBERSPACE_SSH_PORT }} ${{ secrets.UBERSPACE_USER }}@${{ secrets.UBERSPACE_HOST }} "bash -s" < scripts/deploy.sh
+          ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.UBERSPACE_SSH_PORT }} ${{ secrets.UBERSPACE_USER }}@${{ secrets.UBERSPACE_HOST }} "bash -s" < scripts/deploy.sh
           echo "✓ Deployment successful"
 
       - name: Verify deployment

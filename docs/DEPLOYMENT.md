@@ -25,27 +25,52 @@ git push to main
 
 ---
 
+## Server Details
+
+| Setting | Value |
+|---|---|
+| Uberspace host | `giclas.uberspace.de` |
+| Uberspace user | `mattmaxx` |
+| App URL | `https://matt-maxx.de/picnic` |
+| SSH port | `22` |
+
+**Note:** Your personal SSH key (`~/.ssh/id_ed25519_uberspace`) is for *your* login.
+For GitHub Actions, create a **separate, dedicated deploy key** — this way you can
+revoke CI/CD access independently without affecting your own access.
+
+---
+
 ## Setup Instructions
 
-### Step 1: Generate SSH Key (if you don't have one)
+### Step 1: Generate a Dedicated Deploy Key for GitHub Actions
 
-On your local machine or Uberspace:
+On your local machine, generate a new ed25519 keypair (do NOT reuse your personal key):
 
 ```bash
-ssh-keygen -t ed25519 -C "github-actions-picnic" -f ~/.ssh/github_deploy_key
+ssh-keygen -t ed25519 -C "github-actions-picnic-deploy" -f ~/.ssh/picnic_deploy_key -N ""
 ```
 
 This creates:
-- `~/.ssh/github_deploy_key` (private key) — for GitHub Secrets
-- `~/.ssh/github_deploy_key.pub` (public key) — add to Uberspace
+- `~/.ssh/picnic_deploy_key` (private key) — goes into GitHub Secrets
+- `~/.ssh/picnic_deploy_key.pub` (public key) — goes onto Uberspace
 
-### Step 2: Add Public Key to Uberspace
+### Step 2: Add the Public Key to Uberspace
 
-On Uberspace, add the public key to `~/.ssh/authorized_keys`:
+Copy the public key to Uberspace's `authorized_keys` (append, don't overwrite):
 
 ```bash
-cat ~/.ssh/github_deploy_key.pub >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
+# From your local machine
+ssh-copy-id -i ~/.ssh/picnic_deploy_key.pub -p 22 mattmaxx@giclas.uberspace.de
+
+# Or manually:
+cat ~/.ssh/picnic_deploy_key.pub | ssh -i ~/.ssh/id_ed25519_uberspace mattmaxx@giclas.uberspace.de \
+  "cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+Verify the new key works:
+
+```bash
+ssh -i ~/.ssh/picnic_deploy_key mattmaxx@giclas.uberspace.de "echo OK"
 ```
 
 ### Step 3: Configure GitHub Secrets
@@ -54,101 +79,87 @@ Go to **GitHub Repository → Settings → Secrets and variables → Actions**
 
 Add these secrets:
 
-| Secret Name | Value | Example |
-|---|---|---|
-| `UBERSPACE_SSH_KEY` | Private key (entire file contents) | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
-| `UBERSPACE_HOST` | Uberspace hostname | `matt-maxx.de` |
-| `UBERSPACE_USER` | Uberspace username | `matthias1309` |
-| `UBERSPACE_SSH_PORT` | SSH port (usually 22) | `22` |
-| `SLACK_WEBHOOK` | (Optional) Slack webhook for notifications | `https://hooks.slack.com/...` |
+| Secret Name | Value |
+|---|---|
+| `UBERSPACE_SSH_KEY` | Contents of `~/.ssh/picnic_deploy_key` (private key, entire file) |
+| `UBERSPACE_HOST` | `giclas.uberspace.de` |
+| `UBERSPACE_USER` | `mattmaxx` |
+| `UBERSPACE_SSH_PORT` | `22` |
 
-**⚠️ Important:** Copy the **entire private key file** including `-----BEGIN` and `-----END` lines.
-
-### Step 4: Configure Uberspace Service
-
-Create a systemd user service or supervisord config:
-
-#### Option A: Systemd (Modern Uberspace)
-
-Create `~/.config/systemd/user/picnic.service`:
-
-```ini
-[Unit]
-Description=Picnic Expense Tracker
-After=network.target
-
-[Service]
-Type=notify
-WorkingDirectory=%h/picnic
-ExecStart=%h/picnic/venv/bin/gunicorn \
-    --bind 127.0.0.1:8000 \
-    --workers 2 \
-    --timeout 60 \
-    --access-logfile %h/logs/picnic/access.log \
-    --error-logfile %h/logs/picnic/error.log \
-    backend.main:app
-
-Restart=always
-RestartSec=10
-
-# Environment variables
-EnvironmentFile=%h/picnic/.env
-
-[Install]
-WantedBy=default.target
-```
-
-Enable and start:
+**⚠️ Important:** Copy the **entire private key file** including `-----BEGIN OPENSSH PRIVATE KEY-----`
+and `-----END OPENSSH PRIVATE KEY-----` lines.
 
 ```bash
-systemctl --user daemon-reload
-systemctl --user enable picnic
-systemctl --user start picnic
+cat ~/.ssh/picnic_deploy_key
 ```
 
-#### Option B: Supervisord (Legacy)
+`SLACK_WEBHOOK` is optional — only add it if you want Slack deployment notifications.
+If not configured, that step is skipped automatically (`continue-on-error: true`).
 
-Create `/etc/supervisor/conf.d/picnic.conf`:
+### Step 4: Configure Uberspace Service (supervisord)
+
+Uberspace manages long-running processes via **supervisord**, configured through
+`.ini` files in `~/etc/services.d/`. SSH into Uberspace first:
+
+```bash
+ssh -i ~/.ssh/id_ed25519_uberspace mattmaxx@giclas.uberspace.de
+```
+
+Create `~/etc/services.d/picnic.ini`:
 
 ```ini
 [program:picnic]
-directory = /home/matthias1309/picnic
-command = /home/matthias1309/picnic/venv/bin/gunicorn \
-    --bind 127.0.0.1:8000 \
-    --workers 2 \
-    --timeout 60 \
+command=%(ENV_HOME)s/picnic/venv/bin/gunicorn ^
+    --bind 127.0.0.1:8000 ^
+    --workers 2 ^
+    --timeout 60 ^
+    --access-logfile %(ENV_HOME)s/logs/picnic/access.log ^
+    --error-logfile %(ENV_HOME)s/logs/picnic/error.log ^
     backend.main:app
-user = matthias1309
-autostart = true
-autorestart = true
-stdout_logfile = /home/matthias1309/logs/picnic/gunicorn.log
-stderr_logfile = /home/matthias1309/logs/picnic/gunicorn.error.log
-environment = PATH="/home/matthias1309/picnic/venv/bin"
+    -k uvicorn.workers.UvicornWorker
+directory=%(ENV_HOME)s/picnic
+environment=PATH="%(ENV_HOME)s/picnic/venv/bin"
+autostart=true
+autorestart=true
 ```
 
-Then:
+> Note: `gunicorn` needs the `uvicorn.workers.UvicornWorker` worker class to serve
+> a FastAPI (ASGI) app. This is included via `uvicorn[standard]` in `requirements.txt`.
+
+Apply the config and start the service:
 
 ```bash
-sudo supervisorctl reread
-sudo supervisorctl update
-sudo supervisorctl start picnic
+mkdir -p ~/logs/picnic
+supervisorctl reread
+supervisorctl update
+supervisorctl start picnic
+supervisorctl status picnic
 ```
 
-### Step 5: Configure Nginx Reverse Proxy
+### Step 5: Route the Domain Path to the Backend
 
-On Uberspace, configure nginx to reverse proxy to localhost:8000:
+Uberspace provides a built-in command to route a URL path to a local port —
+no manual nginx config needed:
 
-In your Uberspace reverse proxy config (ask Uberspace support if unclear):
-
-```nginx
-location /picnic {
-    proxy_pass http://127.0.0.1:8000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
+```bash
+uberspace web backend set /picnic --http --port 8000
 ```
+
+Verify the routing:
+
+```bash
+uberspace web backend list
+```
+
+For the **frontend** (static SPA build), Uberspace serves files directly from
+`~/html/`. Serve the built frontend under `/picnic` by either:
+
+- Building into `~/html/picnic/` (set Vite's `base: '/picnic/'` and output there), or
+- Routing `/picnic` entirely to the backend and having FastAPI serve the built
+  SPA as static files (simplest for a single-path deployment).
+
+For MVP, the deploy script focuses on the backend API. Frontend static hosting
+can be wired up once the dashboard (REQ-003) is implemented.
 
 ### Step 6: Test Deployment
 
@@ -185,7 +196,7 @@ To deploy manually (without pushing to main):
 
 ```bash
 # SSH into Uberspace
-ssh matthias1309@matt-maxx.de
+ssh -i ~/.ssh/id_ed25519_uberspace mattmaxx@giclas.uberspace.de
 
 # Run deploy script
 bash ~/picnic/scripts/deploy.sh
@@ -201,14 +212,14 @@ git log --oneline | head -5  # See recent commits
 git reset --hard <commit-hash>
 
 # Restart service
-systemctl --user restart picnic  # or supervisorctl restart picnic
+supervisorctl restart picnic
 ```
 
 ---
 
 ## Environment Variables
 
-Create `.env` file on Uberspace (NOT committed to git):
+Create `~/picnic/.env` on Uberspace (NOT committed to git):
 
 ```bash
 # IMAP Configuration
@@ -219,7 +230,7 @@ IMAP_PASSWORD=your-app-password
 IMAP_MAILBOX=INBOX
 
 # Database
-DATABASE_URL=sqlite:////home/matthias1309/data/picnic.db
+DATABASE_URL=sqlite:////home/mattmaxx/data/picnic.db
 
 # Application
 ENVIRONMENT=production
@@ -236,9 +247,10 @@ CORS_ORIGINS=["https://matt-maxx.de"]
 
 ### Logs
 
-- **Application logs:** `tail -f ~/logs/picnic/gunicorn.log`
-- **Systemd logs:** `journalctl --user -u picnic -f`
-- **Error logs:** `tail -f ~/logs/picnic/gunicorn.error.log`
+- **Application logs:** `tail -f ~/logs/picnic/access.log`
+- **Error logs:** `tail -f ~/logs/picnic/error.log`
+- **Supervisord status:** `supervisorctl status picnic`
+- **Supervisord tail:** `supervisorctl tail -f picnic`
 
 ### Health Check
 
@@ -261,14 +273,15 @@ sqlite3 ~/data/picnic.db "SELECT COUNT(*) FROM receipts;"
 
 **Check:**
 - SSH secrets are configured correctly (GitHub Settings → Secrets)
-- SSH key has correct permissions: `chmod 600 ~/.ssh/id_rsa`
-- Uberspace host/port/user are correct
+- The dedicated deploy key's public half is in `~/.ssh/authorized_keys` on Uberspace
+- `UBERSPACE_HOST=giclas.uberspace.de`, `UBERSPACE_USER=mattmaxx`, `UBERSPACE_SSH_PORT=22`
+- Test the key manually: `ssh -i ~/.ssh/picnic_deploy_key mattmaxx@giclas.uberspace.de "echo OK"`
 
 ### App doesn't start after deployment
 
 **Check:**
-- Service status: `systemctl --user status picnic` or `supervisorctl status picnic`
-- Logs: `journalctl --user -u picnic -n 50`
+- Service status: `supervisorctl status picnic`
+- Logs: `supervisorctl tail -f picnic` or `tail -f ~/logs/picnic/error.log`
 - `.env` file exists: `ls -la ~/picnic/.env`
 - Database exists: `ls -la ~/data/picnic.db`
 - Port is not in use: `lsof -i :8000`
@@ -280,12 +293,12 @@ sqlite3 ~/data/picnic.db "SELECT COUNT(*) FROM receipts;"
 - IMAP credentials are valid (test with: `python -c "from backend.imap.client import IMAPClient; IMAPClient(...).connect()"`)
 - Firewall allows outgoing IMAP (port 993)
 
-### Nginx reverse proxy not working
+### Path routing (`/picnic`) not working
 
 **Check:**
 - App is running: `curl http://127.0.0.1:8000/health`
-- Nginx is configured: `cat /etc/nginx/sites-enabled/YOUR_DOMAIN | grep picnic`
-- Nginx is reloaded: `sudo nginx -t && sudo systemctl reload nginx`
+- Backend routing is set: `uberspace web backend list` (should show `/picnic -> port 8000`)
+- Re-set if missing: `uberspace web backend set /picnic --http --port 8000`
 
 ---
 

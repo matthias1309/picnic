@@ -36,7 +36,7 @@ mkdir -p "$PICNIC_ROOT" "$HOME/data" "$PICNIC_LOG"
 echo "[2/6] Updating repository..."
 if [ -d "$PICNIC_ROOT/.git" ]; then
     cd "$PICNIC_ROOT"
-    git fetch origin
+    git fetch origin main
     git reset --hard origin/main
     echo "✓ Repository updated"
 else
@@ -86,30 +86,15 @@ else
 fi
 
 # ============================================================
-# 6. Restart backend service
+# 6. Restart backend service (Uberspace supervisord)
 # ============================================================
 echo "[6/6] Restarting backend service..."
 
-# Method 1: If using supervisord (most common on Uberspace)
-if command -v supervisorctl &> /dev/null; then
-    supervisorctl reread
-    supervisorctl update
-    supervisorctl restart picnic || echo "Note: Could not restart via supervisorctl"
-    echo "✓ Service restarted via supervisord"
-fi
-
-# Method 2: If using systemd user service
-if systemctl --user is-active --quiet picnic; then
-    systemctl --user restart picnic
-    echo "✓ Service restarted via systemd"
-fi
-
-# Method 3: Manual process restart (if no supervisor)
-if [ -f "$PICNIC_ROOT/.pid" ]; then
-    kill $(cat "$PICNIC_ROOT/.pid") 2>/dev/null || true
-    sleep 2
-    echo "✓ Process killed, service manager will restart it"
-fi
+# Uberspace manages daemons via supervisord with configs in ~/etc/services.d/*.ini
+supervisorctl reread
+supervisorctl update
+supervisorctl restart picnic
+echo "✓ Service restarted via supervisord"
 
 echo ""
 echo "======================================"
