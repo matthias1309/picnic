@@ -8,33 +8,60 @@ Claude Code reads it automatically at the start of every session.
 
 ## Project Overview
 
-<!-- TODO: Replace this section with a description of your project. -->
-<!-- Example:
-This is a REST API service for managing user accounts and authentication.
-It exposes endpoints consumed by the frontend SPA and mobile clients.
--->
+**Project Name:** Picnic Expense Tracker
 
-**Project Name:** _Your Project Name_
-**Purpose:** _Describe what this project does and why it exists._
-**Primary Audience:** _Developers / End users / Internal tooling_
-**Status:** _Active development / Maintenance / Experimental_
+**Purpose:** Automatically parse Picnic.de grocery receipt emails, extract article prices and quantities, and build a historical database. Provides insights into grocery spending: price trends over time, most-bought items, budget tracking, and purchase statistics.
+
+**Primary Audience:** Personal use (single user tracking own Picnic purchases)
+
+**Status:** Active development (MVP Phase 1: Email parsing + dashboard)
+
+**MVP Scope:**
+1. IMAP polling of Picnic invoice emails (Uberspace mailbox)
+2. HTML email parsing → extract articles, quantities, prices
+3. SQLite database for receipt history
+4. REST API for data access
+5. React dashboard: price history charts, purchase statistics, budget tracking
 
 ---
 
 ## Tech Stack
 
-<!-- TODO: Fill in the actual stack for your project. -->
+**Backend:**
 
-| Layer        | Technology                             |
-|--------------|----------------------------------------|
-| Language     | _e.g. TypeScript 5.x / Python 3.12_   |
-| Runtime      | _e.g. Node.js 20 LTS_                  |
-| Framework    | _e.g. Express / FastAPI / Next.js 14_ |
-| Database     | _e.g. PostgreSQL 15 / SQLite_          |
-| ORM          | _e.g. Prisma / SQLAlchemy_             |
-| Testing      | _e.g. Vitest + Testing Library / pytest_ |
-| Linting      | _e.g. ESLint + Prettier / Ruff_        |
-| CI/CD        | _e.g. GitHub Actions_                  |
+| Layer        | Technology                        |
+|--------------|-----------------------------------|
+| Language     | Python 3.12                       |
+| Runtime      | Gunicorn (WSGI) on Uberspace      |
+| Framework    | FastAPI 0.104+                    |
+| Database     | SQLite 3.x (file-based)           |
+| ORM          | SQLAlchemy 2.0+                   |
+| Email Parser | imaplib + BeautifulSoup 4         |
+| Testing      | pytest + pytest-asyncio           |
+| Linting      | Ruff (check + format)             |
+
+**Frontend:**
+
+| Layer        | Technology                        |
+|--------------|-----------------------------------|
+| Language     | TypeScript 5.x                    |
+| Runtime      | Node.js 20 LTS                    |
+| Framework    | React 18+                         |
+| State        | TanStack Query (data) + Zustand   |
+| Charts       | Recharts (price history, stats)   |
+| Styling      | TailwindCSS                       |
+| Build        | Vite                              |
+| Testing      | Vitest + React Testing Library    |
+| Linting      | ESLint + Prettier                 |
+
+**Deployment:**
+
+| Layer        | Technology                        |
+|--------------|-----------------------------------|
+| Backend      | Gunicorn on Uberspace (Python 3.12) |
+| Frontend     | Static SPA on Uberspace (nginx)   |
+| Database     | SQLite on Uberspace (/home/...)   |
+| CI/CD        | GitHub Actions (tests, lint)      |
 
 ---
 
@@ -56,53 +83,144 @@ If a convention is unclear, ask before proceeding.
 
 ## Common Commands
 
-<!-- TODO: Replace placeholders with actual commands for your project. -->
+**Backend (Python):**
 
 ```bash
 # Install dependencies
-npm install          # or: pip install -r requirements.txt
+pip install -r requirements.txt
 
-# Run development server
-npm run dev          # or: python -m uvicorn app.main:app --reload
-
-# Build for production
-npm run build        # or: python -m build
+# Run development server (with hot-reload)
+python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 # Run all tests
-npm test             # or: pytest
+pytest
 
 # Run tests in watch mode
-npm run test:watch   # or: pytest-watch
+pytest-watch
 
-# Run linter
-npm run lint         # or: ruff check . && ruff format --check .
+# Run linter & format check
+ruff check backend/
+ruff format --check backend/
 
 # Run linter with auto-fix
-npm run lint:fix     # or: ruff check --fix . && ruff format .
+ruff check --fix backend/
+ruff format backend/
 
-# Type-check
-npm run typecheck    # or: mypy .
+# Type-check (if added)
+mypy backend/ --ignore-missing-imports
 ```
 
-Always run tests and linting before considering a task complete.
+**Frontend (React + TypeScript):**
+
+```bash
+# Install dependencies
+cd frontend && npm install
+
+# Run dev server (Vite)
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build locally
+npm run preview
+
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Lint & format check
+npm run lint
+
+# Lint with auto-fix
+npm run lint:fix
+```
+
+**Always run tests and linting before considering a task complete.**
 
 ---
 
 ## Project Structure
 
-<!-- TODO: Update this tree to reflect the actual project layout. -->
-
 ```
-src/
-  components/     # Reusable UI components
-  features/       # Feature-scoped modules (co-locate tests here)
-  lib/            # Shared utilities and helpers
-  types/          # Global TypeScript type definitions
-  app/            # Entry points / pages / routes
-tests/
-  unit/           # Pure unit tests (fast, no I/O)
-  integration/    # Integration & API tests
-  e2e/            # End-to-end tests (if applicable)
+backend/
+  main.py                    # FastAPI app entry point
+  config.py                  # Configuration (env vars, settings)
+  models.py                  # SQLAlchemy ORM models (Receipt, Item, Product, etc.)
+  schemas.py                 # Pydantic schemas (request/response)
+  database.py                # SQLAlchemy setup & session
+  
+  imap/
+    client.py                # IMAP polling logic
+    parser.py                # HTML email parser → receipt data
+    
+  api/
+    routes.py                # REST endpoints (/api/receipts, /api/stats, etc.)
+    dependencies.py          # Shared dependencies (auth, DB session)
+    
+  services/
+    receipt_service.py       # Business logic for receipts
+    stats_service.py         # Statistics calculations (trends, top items)
+    
+  tests/
+    conftest.py              # pytest fixtures
+    test_imap.py             # IMAP client tests
+    test_parser.py           # Receipt parser tests
+    test_api.py              # API endpoint tests
+    test_services.py         # Service logic tests
+
+frontend/
+  src/
+    components/
+      Dashboard.tsx          # Main dashboard page
+      Charts/
+        PriceHistory.tsx     # Recharts price trend
+        PurchaseStats.tsx    # Top items, frequencies
+      Settings/
+        IMAPConfig.tsx       # IMAP credential form
+        
+    pages/
+      Home.tsx
+      Stats.tsx
+      Settings.tsx
+      
+    api/
+      client.ts              # REST API calls (React Query)
+      
+    types/
+      index.ts               # TypeScript interfaces
+      
+    hooks/
+      useReceipts.ts
+      useStats.ts
+      
+    App.tsx
+    main.tsx
+    
+  tests/
+    Dashboard.test.tsx
+    Charts.test.tsx
+    (vitest + RTL)
+    
+  public/
+  index.html
+  vite.config.ts
+  tsconfig.json
+  tailwind.config.js
+
+docs/
+  requirements/             # REQ-XXX.md user stories
+  architecture/             # ARCH-XXX.md design docs
+  test-specs/               # TEST-XXX.md test specifications
+  code-reviews/             # CR-XXX.md review documents
+
+.env.example                # Template for .env (IMAP credentials, DB path)
+requirements.txt            # Python dependencies
+package.json                # Frontend dependencies
+.gitignore
+README.md
 ```
 
 ---
@@ -133,25 +251,56 @@ tests/
 
 ## Architecture Notes
 
-<!-- TODO: Add any non-obvious architectural decisions, patterns, or constraints. -->
-<!-- Example:
-- All database access goes through the repository layer in src/repositories/.
-- Business logic lives in src/services/ — controllers are thin.
-- The frontend communicates via REST; do not add GraphQL without team discussion.
-- Authentication uses JWT; tokens are short-lived (15 min) with refresh token rotation.
--->
+**Backend:**
+- IMAP polling runs as a scheduled task (APScheduler) every 30 minutes, triggered manually or periodically.
+- Email parsing uses BeautifulSoup to extract HTML tables from Picnic invoices → JSON (items with price, qty).
+- All database access goes through SQLAlchemy ORM (no raw SQL).
+- Business logic lives in `services/` — routes are thin wrappers around service calls.
+- Receipt deduplication: emails are matched by `Message-ID` header to avoid double-processing.
 
-_Document key architectural decisions and patterns here._
+**Frontend:**
+- React SPA communicates exclusively via REST API (no GraphQL).
+- TanStack Query manages server state & caching; Zustand for local UI state.
+- Charts use Recharts for price trends & purchase statistics (configurable time ranges).
+- No authentication initially (single-user assumption); can be added in Phase 2.
+
+**Database:**
+- SQLite with SQLAlchemy. Migrations use Alembic (optional, since this is MVP).
+- Schema: `receipts`, `receipt_items`, `products`, `price_history` tables.
+- Denormalization: `price_history` stores individual item prices per receipt for efficient charting.
+
+**Deployment on Uberspace:**
+- Backend: Python app served via Gunicorn behind nginx reverse proxy.
+- Frontend: Static SPA (built Vite bundle) served directly by nginx.
+- Database: SQLite file in `/home/user/data/picnic.db` (persistent, readable by both backend processes).
+- IMAP credentials stored in `.env` (not committed), sourced by FastAPI on startup.
+
+**V-Model Compliance:**
+- Every feature has a REQ document (user story + acceptance criteria).
+- Every REQ traces to ARCH & TEST-SPEC before code is written.
+- Tests are written first (TDD), then code.
+- Git history links commits to REQ IDs for traceability.
 
 ---
 
-## Out of Scope
+## Out of Scope (Phase 1 MVP)
 
-<!-- TODO: List things Claude should NOT do in this project without explicit instruction. -->
-<!-- Example:
-- Do not upgrade major dependency versions without discussion.
-- Do not modify database migration files after they have been applied.
-- Do not change the public API contract without updating the OpenAPI spec.
--->
+- **Multi-user & split bills:** Only single-user tracking initially. Phase 2 feature.
+- **Multi-account:** Only one Picnic account / IMAP mailbox.
+- **OAuth / authentication:** Not needed for MVP (personal use).
+- **Mobile app:** Web-only initially.
+- **Real-time notifications:** Email polling is on a fixed 30-minute schedule.
+- **Advanced analytics:** ML-based recommendations, clustering, etc. — Phase 2+.
+- **Fuzzy product matching:** Use exact product names for MVP; improve matching later.
 
-_List things that are explicitly off-limits or require human review before proceeding._
+**Deployment constraints:**
+- Must run on Uberspace (no external services beyond IMAP).
+- No third-party APIs for price data / product info.
+- SQLite only (no PostgreSQL instance).
+
+**Code quality:**
+- Do not add dependencies without discussing with the developer first.
+- Do not force-push to `main` or `master`.
+- Do not commit `.env`, `*.db`, or credentials.
+- Database migrations are reviewed before production deploy.
+- Target 80%+ test coverage on business logic.

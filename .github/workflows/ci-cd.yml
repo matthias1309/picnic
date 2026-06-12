@@ -1,0 +1,126 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, "claude/**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ============================================================
+  # Test & Lint Backend (Python)
+  # ============================================================
+  backend-test:
+    name: Backend Test & Lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint with Ruff
+        run: |
+          ruff check backend/ --select=E,W,F
+          echo "✓ Ruff linting passed"
+
+      - name: Run tests with pytest
+        run: |
+          pytest backend/tests/ -v --tb=short
+          echo "✓ All tests passed"
+
+      - name: Test coverage
+        run: |
+          pytest backend/tests/ --cov=backend --cov-report=term-only
+          echo "✓ Coverage report generated"
+
+  # ============================================================
+  # Test & Lint Frontend (TypeScript/React)
+  # ============================================================
+  frontend-test:
+    name: Frontend Test & Lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['18.x', '20.x']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint with ESLint
+        working-directory: frontend
+        run: |
+          npm run lint
+          echo "✓ ESLint passed"
+
+      - name: Type check
+        working-directory: frontend
+        run: |
+          npm run type-check
+          echo "✓ Type checking passed"
+
+      - name: Build
+        working-directory: frontend
+        run: |
+          npm run build
+          echo "✓ Build successful"
+
+  # ============================================================
+  # Deploy to Uberspace (on main branch push only)
+  # ============================================================
+  deploy:
+    name: Deploy to Uberspace
+    needs: [backend-test, frontend-test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://matt-maxx.de/picnic
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.UBERSPACE_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.UBERSPACE_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Uberspace
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.UBERSPACE_SSH_PORT }} ${{ secrets.UBERSPACE_USER }}@${{ secrets.UBERSPACE_HOST }} "bash -s" < scripts/deploy.sh
+          echo "✓ Deployment successful"
+
+      - name: Verify deployment
+        run: |
+          curl -f https://matt-maxx.de/picnic/health || echo "Warning: Health check failed (app may still be starting)"
+
+      - name: Slack notification (optional)
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Picnic deployment to https://matt-maxx.de/picnic - ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        continue-on-error: true
