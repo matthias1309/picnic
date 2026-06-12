@@ -5,7 +5,6 @@ Loads settings from .env file using Pydantic Settings v2.
 """
 
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class Settings(BaseSettings):

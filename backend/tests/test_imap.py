@@ -283,14 +283,12 @@ def test_receipt_table_has_correct_indexes(db_session):
     inspector = inspect(db_session.bind)
     indexes = inspector.get_indexes("receipts")
     columns = [col["name"] for col in inspector.get_columns("receipts")]
-    pk_columns = inspector.get_pk_constraint("receipts")
 
     # Assert
     assert "message_id" in columns
     assert "created_at" in columns
     assert "processed" in columns
     # Verify indexes exist
-    index_names = [idx["name"] for idx in indexes]
     assert any("message_id" in idx["column_names"] for idx in indexes)
 
 
