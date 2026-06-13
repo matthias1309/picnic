@@ -109,14 +109,14 @@ Create `~/etc/services.d/picnic.ini`:
 
 ```ini
 [program:picnic]
-command=%(ENV_HOME)s/picnic/venv/bin/gunicorn ^
-    --bind 127.0.0.1:8000 ^
-    --workers 2 ^
-    --timeout 60 ^
-    --access-logfile %(ENV_HOME)s/logs/picnic/access.log ^
-    --error-logfile %(ENV_HOME)s/logs/picnic/error.log ^
+command=%(ENV_HOME)s/picnic/venv/bin/gunicorn
+    --bind 127.0.0.1:8000
+    --workers 2
+    --timeout 60
+    --worker-class uvicorn.workers.UvicornWorker
+    --access-logfile %(ENV_HOME)s/logs/picnic/access.log
+    --error-logfile %(ENV_HOME)s/logs/picnic/error.log
     backend.main:app
-    -k uvicorn.workers.UvicornWorker
 directory=%(ENV_HOME)s/picnic
 environment=PATH="%(ENV_HOME)s/picnic/venv/bin"
 autostart=true
