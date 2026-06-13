@@ -17,6 +17,7 @@ from backend.config import settings
 from backend.database import init_db, SessionLocal
 from backend.models import Receipt
 from backend.imap.client import IMAPClient
+from backend.services.receipt_service import parse_pending_receipts
 from datetime import datetime
 
 # Configure logging
@@ -109,6 +110,24 @@ def poll_emails_task():
         # Don't raise — let the scheduler retry next cycle
 
 
+def parse_receipts_task():
+    """
+    Background task to parse unprocessed receipts into structured data.
+
+    Called by APScheduler every PARSE_INTERVAL seconds.
+    """
+    logger.info("Starting receipt parsing task")
+
+    db = SessionLocal()
+    try:
+        parse_pending_receipts(db)
+    except Exception as e:
+        logger.error(f"Parsing task failed: {e}")
+        # Don't raise — let the scheduler retry next cycle
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -132,8 +151,16 @@ async def lifespan(app: FastAPI):
         id="poll_emails",
         name="Poll Picnic emails",
     )
+    scheduler.add_job(
+        parse_receipts_task,
+        "interval",
+        seconds=settings.parse_interval,
+        id="parse_receipts",
+        name="Parse Picnic receipts",
+    )
     scheduler.start()
     logger.info(f"Email polling scheduled every {settings.polling_interval} seconds")
+    logger.info(f"Receipt parsing scheduled every {settings.parse_interval} seconds")
 
     yield
 

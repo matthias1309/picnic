@@ -3,7 +3,7 @@
 **Status:** draft  
 **Created:** 2026-06-13  
 **Traces:** REQ-002  
-**Verified by:** _(pending)_ TEST-002
+**Verified by:** TEST-002
 
 ## Summary
 
