@@ -24,7 +24,9 @@ class Receipt(Base):
     received_date = Column(DateTime, nullable=False)
     from_address = Column(String(255), nullable=False)
     raw_email_text = Column(Text, nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
+    created_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=func.now()
+    )
     processed = Column(Boolean, default=False, nullable=False, index=True)
 
     # Additional indexes for common queries
@@ -33,4 +35,7 @@ class Receipt(Base):
     )
 
     def __repr__(self):
-        return f"<Receipt(id={self.id}, message_id={self.message_id}, received_date={self.received_date})>"
+        return (
+            f"<Receipt(id={self.id}, message_id={self.message_id}, "
+            f"received_date={self.received_date})>"
+        )

@@ -144,7 +144,8 @@ class IMAPClient:
         # Fallback: generate ID from From, Date, and body hash
         from_addr = msg.get("From", "unknown")
         received_date = msg.get("Date", str(datetime.utcnow()))
-        body = msg.get_payload(decode=True) if isinstance(msg.get_payload(), bytes) else str(msg.get_payload())
+        payload = msg.get_payload(decode=True)
+        body = payload if isinstance(payload, bytes) else str(msg.get_payload())
 
         if isinstance(body, bytes):
             body_hash = hashlib.sha256(body).hexdigest()[:16]
