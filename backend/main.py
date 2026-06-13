@@ -10,7 +10,7 @@ Includes:
 
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from backend.config import settings
@@ -162,15 +162,21 @@ app.add_middleware(
 )
 
 
+# Routes are served under /picnic, matching the Uberspace path-based
+# reverse proxy ("uberspace web backend set /picnic --http --port 8000"),
+# which forwards the full request path without stripping the prefix.
+router = APIRouter(prefix="/picnic")
+
+
 # Health check endpoint
-@app.get("/health")
+@router.get("/health")
 async def health():
     """Health check endpoint."""
     return {"status": "ok"}
 
 
 # Root endpoint
-@app.get("/")
+@router.get("/")
 async def root():
     """Root endpoint with API info."""
     return {
@@ -178,6 +184,9 @@ async def root():
         "version": "0.1.0",
         "docs": "/docs",
     }
+
+
+app.include_router(router)
 
 
 if __name__ == "__main__":
