@@ -42,7 +42,7 @@ jobs:
 
       - name: Test coverage
         run: |
-          pytest backend/tests/ --cov=backend --cov-report=term-only
+          pytest backend/tests/ --cov=backend --cov-report=term-missing
           echo "✓ Coverage report generated"
 
   # ============================================================
