@@ -4,7 +4,12 @@ Shared pytest fixtures for Picnic backend tests.
 Fixtures:
 - db_session: In-memory SQLite session for integration tests
 - test_email_message: Sample email.Message for test data
+- picnic_receipt_html: HTML of a sample "Dein Bon" invoice
+- picnic_receipt_malformed_html: HTML without a recognizable invoice structure
+- make_raw_email: builds a raw MIME message string with a given HTML body
 """
+
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
@@ -12,6 +17,8 @@ from sqlalchemy.orm import sessionmaker, Session
 from email.message import EmailMessage
 
 from backend.models import Base
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 # In-memory SQLite for integration tests
@@ -58,3 +65,34 @@ def test_email_message() -> EmailMessage:
     msg['Date'] = 'Wed, 12 Jun 2026 14:30:00 +0200'
     msg.set_content('Invoice details here...')
     return msg
+
+
+@pytest.fixture
+def picnic_receipt_html() -> str:
+    """HTML body of a sample Picnic "Dein Bon" invoice (anonymized excerpt)."""
+    return (FIXTURES_DIR / "picnic_receipt.html").read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def picnic_receipt_malformed_html() -> str:
+    """HTML without any recognizable Picnic invoice item rows."""
+    return (FIXTURES_DIR / "picnic_receipt_malformed.html").read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def make_raw_email():
+    """Factory for building a raw MIME email string with an HTML body."""
+
+    def _make(html: str | None, subject: str = "Dein Bon") -> str:
+        msg = EmailMessage()
+        msg["Message-ID"] = "bon@picnic.app"
+        msg["From"] = "info@service.picnic.de"
+        msg["To"] = "user@example.com"
+        msg["Subject"] = subject
+        msg["Date"] = "Mon, 1 Jun 2026 20:45:00 +0200"
+        msg.set_content("Hier ist der Bon zu deiner Bestellung.")
+        if html is not None:
+            msg.add_alternative(html, subtype="html")
+        return msg.as_string()
+
+    return _make

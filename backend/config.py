@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # Polling Configuration
     polling_interval: int = 1800  # 30 minutes in seconds
 
+    # Receipt Parsing Configuration
+    parse_interval: int = 1800  # 30 minutes in seconds
+
     # Database Configuration
     database_url: str = "sqlite:///./picnic.db"
 
