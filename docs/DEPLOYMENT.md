@@ -238,7 +238,7 @@ DEBUG=false
 LOG_LEVEL=INFO
 
 # CORS
-CORS_ORIGINS=["https://matt-maxx.de"]
+CORS_ORIGINS=https://matt-maxx.de
 ```
 
 ---

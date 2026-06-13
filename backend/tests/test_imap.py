@@ -317,5 +317,23 @@ def test_config_loads_from_env(tmp_path):
     assert settings.imap_port == 993
     assert isinstance(settings.imap_port, int)
     assert settings.imap_username == "user@example.com"
+
+
+# TC-001-11: CORS_ORIGINS is parsed from a comma-separated .env value
+def test_config_parses_comma_separated_cors_origins(tmp_path):
+    """
+    Given a .env file with CORS_ORIGINS as a comma-separated string
+    When Pydantic Settings reads the .env file
+    Then cors_origins_list returns a list of trimmed origins
+    """
+    # Arrange
+    env_file = tmp_path / ".env"
+    env_file.write_text("CORS_ORIGINS=https://matt-maxx.de, http://localhost:5173\n")
+
+    # Act
+    settings = Settings(_env_file=str(env_file))
+
+    # Assert
+    assert settings.cors_origins_list == ["https://matt-maxx.de", "http://localhost:5173"]
     assert settings.polling_interval == 1800
     assert isinstance(settings.polling_interval, int)

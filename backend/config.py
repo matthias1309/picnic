@@ -29,8 +29,13 @@ class Settings(BaseSettings):
     debug: bool = True
     log_level: str = "INFO"
 
-    # CORS Configuration (for frontend)
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    # CORS Configuration (for frontend), as a comma-separated list of origins
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parsed CORS origins, split from the comma-separated setting."""
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     class Config:
         """Pydantic config."""
