@@ -96,6 +96,22 @@ supervisorctl update
 supervisorctl restart picnic
 echo "✓ Service restarted via supervisord"
 
+# Wait for the app to come up before declaring the deployment successful
+# (gunicorn workers need a moment to bind after a restart)
+echo "Waiting for health check..."
+for i in 1 2 3 4 5 6 7 8 9 10; do
+    if curl -fs http://127.0.0.1:8000/picnic/health > /dev/null; then
+        echo "✓ Health check passed"
+        break
+    fi
+    if [ "$i" -eq 10 ]; then
+        echo "✗ Health check failed after restart"
+        supervisorctl status picnic
+        exit 1
+    fi
+    sleep 2
+done
+
 echo ""
 echo "======================================"
 echo "✓ Deployment successful!"
