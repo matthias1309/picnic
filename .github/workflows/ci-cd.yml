@@ -42,7 +42,7 @@ jobs:
 
       - name: Test coverage
         run: |
-          pytest backend/tests/ --cov=backend --cov-report=term-only
+          pytest backend/tests/ --cov=backend --cov-report=term-missing
           echo "✓ Coverage report generated"
 
   # ============================================================
@@ -57,7 +57,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if frontend project exists
+        id: check
+        run: |
+          if [ -f frontend/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::frontend/package.json not found yet — skipping frontend tests (REQ-003 not implemented)"
+          fi
+
       - name: Set up Node.js ${{ matrix.node-version }}
+        if: steps.check.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
@@ -65,22 +76,26 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
+        if: steps.check.outputs.exists == 'true'
         working-directory: frontend
         run: npm ci
 
       - name: Lint with ESLint
+        if: steps.check.outputs.exists == 'true'
         working-directory: frontend
         run: |
           npm run lint
           echo "✓ ESLint passed"
 
       - name: Type check
+        if: steps.check.outputs.exists == 'true'
         working-directory: frontend
         run: |
           npm run type-check
           echo "✓ Type checking passed"
 
       - name: Build
+        if: steps.check.outputs.exists == 'true'
         working-directory: frontend
         run: |
           npm run build
