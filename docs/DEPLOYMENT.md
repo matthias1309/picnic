@@ -110,7 +110,7 @@ Create `~/etc/services.d/picnic.ini`:
 ```ini
 [program:picnic]
 command=%(ENV_HOME)s/picnic/venv/bin/gunicorn
-    --bind 127.0.0.1:8000
+    --bind 0.0.0.0:8000
     --workers 2
     --timeout 60
     --worker-class uvicorn.workers.UvicornWorker
@@ -125,6 +125,11 @@ autorestart=true
 
 > Note: `gunicorn` needs the `uvicorn.workers.UvicornWorker` worker class to serve
 > a FastAPI (ASGI) app. This is included via `uvicorn[standard]` in `requirements.txt`.
+
+> Note: Bind to `0.0.0.0`, not `127.0.0.1`. Uberspace's reverse proxy runs in a
+> separate container and connects via the host network, not localhost — binding
+> to `127.0.0.1` causes `uberspace web backend list` to report
+> "wrong interface" and the path returns a 502.
 
 Apply the config and start the service:
 
