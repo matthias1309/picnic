@@ -1,3 +1,8 @@
+export interface User {
+  id: number;
+  username: string;
+}
+
 export interface SummaryStats {
   total_spend_cents: number;
   receipt_count: number;

@@ -10,9 +10,11 @@ Includes:
 
 import logging
 from contextlib import asynccontextmanager
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
+from backend.api.auth_routes import auth_router
+from backend.api.dependencies import get_current_user
 from backend.api.routes import api_router
 from backend.config import settings
 from backend.database import init_db, SessionLocal
@@ -215,7 +217,11 @@ async def root():
     }
 
 
-router.include_router(api_router)
+# Auth routes (/picnic/api/auth/*) are unauthenticated by default; only
+# GET /auth/me declares its own get_current_user dependency. All other
+# /picnic/api/* routes require a valid session (REQ-006).
+router.include_router(auth_router, prefix="/api")
+router.include_router(api_router, dependencies=[Depends(get_current_user)])
 app.include_router(router)
 
 

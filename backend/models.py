@@ -93,6 +93,42 @@ class ReceiptItem(Base):
         )
 
 
+class User(Base):
+    """A household account that can log in to the dashboard."""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=func.now()
+    )
+
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, username={self.username!r})>"
+
+
+class UserSession(Base):
+    """A logged-in session, identified by a hashed token in an httponly cookie."""
+
+    __tablename__ = "sessions"
+
+    token_hash = Column(String(64), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=func.now()
+    )
+
+    user = relationship("User", back_populates="sessions")
+
+    def __repr__(self):
+        return f"<UserSession(user_id={self.user_id}, expires_at={self.expires_at})>"
+
+
 class PriceHistory(Base):
     """Denormalized per-purchase price point, for efficient price-trend charts."""
 

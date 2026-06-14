@@ -1,12 +1,26 @@
 """
 Pydantic response schemas for the REST API.
 
-Traces: ARCH-003
+Traces: ARCH-003, ARCH-006
 """
 
 from datetime import datetime
 
 from pydantic import BaseModel
+
+
+class LoginRequest(BaseModel):
+    """Request body for POST /api/auth/login (AC-006-01, AC-006-02)."""
+
+    username: str
+    password: str
+
+
+class UserOut(BaseModel):
+    """The currently authenticated user (AC-006-01, AC-006-03)."""
+
+    id: int
+    username: str
 
 
 class ReceiptSummary(BaseModel):
