@@ -72,7 +72,7 @@ else
 fi
 
 # ============================================================
-# 5. Build frontend (if Node.js available)
+# 5. Build frontend and publish to the web document root
 # ============================================================
 echo "[5/6] Building frontend..."
 if command -v node &> /dev/null; then
@@ -80,6 +80,13 @@ if command -v node &> /dev/null; then
     npm ci --quiet
     npm run build --quiet
     echo "✓ Frontend built"
+
+    # Publish the built SPA so it's served at https://matt-maxx.de/picnic-frontend/
+    # (Uberspace serves static files from ~/html)
+    rm -rf "$HOME/html/picnic-frontend"
+    mkdir -p "$HOME/html/picnic-frontend"
+    cp -r "$FRONTEND_BUILD"/. "$HOME/html/picnic-frontend/"
+    echo "✓ Frontend published to ~/html/picnic-frontend"
 else
     echo "⚠ Node.js not found, skipping frontend build"
     echo "  (Frontend must be pre-built by GitHub Actions)"
@@ -116,10 +123,12 @@ echo ""
 echo "======================================"
 echo "✓ Deployment successful!"
 echo "======================================"
-echo "App URL: https://matt-maxx.de/picnic"
+echo "API URL:       https://matt-maxx.de/picnic"
+echo "Dashboard URL: https://matt-maxx.de/picnic-frontend/"
 echo "Logs: $PICNIC_LOG"
 echo ""
 echo "Next steps:"
 echo "1. Check logs: tail -f $PICNIC_LOG/picnic.log"
 echo "2. Test: curl https://matt-maxx.de/picnic/health"
+echo "3. Open: https://matt-maxx.de/picnic-frontend/"
 echo ""

@@ -2,11 +2,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
+  // Production build is served under /picnic-frontend/ on Uberspace; the
+  // dev server stays at the root so `npm run dev` works without a prefix.
+  base: command === "build" ? "/picnic-frontend/" : "/",
   server: {
     proxy: {
-      "/picnic": {
+      "/picnic/api": {
         target: "http://localhost:8000",
         changeOrigin: true,
       },
@@ -17,4 +20,4 @@ export default defineConfig({
     globals: true,
     setupFiles: "./src/test/setup.ts",
   },
-});
+}));
