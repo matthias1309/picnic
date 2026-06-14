@@ -7,7 +7,10 @@ Fixtures:
 - picnic_receipt_html: HTML of a sample "Dein Bon" invoice
 - picnic_receipt_malformed_html: HTML without a recognizable invoice structure
 - make_raw_email: builds a raw MIME message string with a given HTML body
-- client: FastAPI TestClient backed by the db_session fixture's database
+- test_user: a registered User ("alice" / "correct-password")
+- client: FastAPI TestClient backed by db_session, authenticated as test_user
+- unauthenticated_client: FastAPI TestClient backed by db_session, with real
+  session authentication enforced (for TEST-006 auth tests)
 """
 
 from pathlib import Path
@@ -19,9 +22,11 @@ from sqlalchemy.pool import StaticPool
 from email.message import EmailMessage
 from fastapi.testclient import TestClient
 
+from backend.api.dependencies import get_current_user
+from backend.auth.security import hash_password
 from backend.database import get_db
 from backend.main import app
-from backend.models import Base
+from backend.models import Base, User
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -110,8 +115,39 @@ def make_raw_email():
 
 
 @pytest.fixture
-def client(db_session: Session) -> TestClient:
-    """FastAPI TestClient with the `get_db` dependency overridden to use db_session."""
+def test_user(db_session: Session) -> User:
+    """A registered user ("alice" / "correct-password") for auth-dependent tests."""
+    user = User(username="alice", password_hash=hash_password("correct-password"))
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+
+@pytest.fixture
+def client(db_session: Session, test_user: User) -> TestClient:
+    """FastAPI TestClient authenticated as `test_user` by default.
+
+    Overrides both `get_db` and `get_current_user` so that existing
+    data-endpoint tests don't need to perform a real login.
+    """
+
+    def _override_get_db():
+        yield db_session
+
+    def _override_get_current_user() -> User:
+        return test_user
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_current_user] = _override_get_current_user
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
+def unauthenticated_client(db_session: Session) -> TestClient:
+    """FastAPI TestClient with real session authentication enforced (TEST-006)."""
 
     def _override_get_db():
         yield db_session
