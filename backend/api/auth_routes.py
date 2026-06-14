@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import SESSION_COOKIE_NAME, get_current_user, get_db
+from backend.auth import rate_limit
 from backend.auth.service import authenticate_user, create_session, delete_session
 from backend.config import settings
 from backend.models import User
@@ -22,16 +23,21 @@ auth_router = APIRouter(prefix="/auth")
 @auth_router.post("/login", response_model=UserOut)
 def login(credentials: LoginRequest, response: Response, db: Session = Depends(get_db)) -> UserOut:
     """Authenticate with username/password and set a session cookie."""
+    if rate_limit.is_locked_out(db, credentials.username):
+        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+
     user = authenticate_user(db, credentials.username, credentials.password)
     if user is None:
+        rate_limit.record_failed_attempt(db, credentials.username)
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
+    rate_limit.reset_attempts(db, credentials.username)
     token = create_session(db, user)
     response.set_cookie(
         SESSION_COOKIE_NAME,
         token,
         httponly=True,
-        secure=not settings.debug,
+        secure=settings.is_production,
         samesite="lax",
         max_age=SESSION_MAX_AGE_SECONDS,
         path="/picnic",

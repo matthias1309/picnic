@@ -129,6 +129,23 @@ class UserSession(Base):
         return f"<UserSession(user_id={self.user_id}, expires_at={self.expires_at})>"
 
 
+class LoginAttempt(Base):
+    """Tracks failed login attempts for rate limiting (lockout)."""
+
+    __tablename__ = "login_attempts"
+
+    username = Column(String(255), primary_key=True)
+    failed_count = Column(Integer, nullable=False, default=0)
+    first_failed_at = Column(DateTime, nullable=False)
+    locked_until = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return (
+            f"<LoginAttempt(username={self.username!r}, failed_count={self.failed_count}, "
+            f"locked_until={self.locked_until})>"
+        )
+
+
 class PriceHistory(Base):
     """Denormalized per-purchase price point, for efficient price-trend charts."""
 
