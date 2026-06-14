@@ -96,6 +96,13 @@ def picnic_receipt_malformed_html() -> str:
 
 
 @pytest.fixture
+def picnic_receipt_forwarded_html() -> str:
+    """HTML of a "Dein Bon" invoice excerpt with <tbody>-wrapped table rows,
+    as produced by Gmail when forwarding the original email."""
+    return (FIXTURES_DIR / "picnic_receipt_forwarded.html").read_text(encoding="utf-8")
+
+
+@pytest.fixture
 def make_raw_email():
     """Factory for building a raw MIME email string with an HTML body."""
 

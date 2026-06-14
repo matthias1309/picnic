@@ -115,7 +115,7 @@ class ReceiptParser:
         a smaller cent part. A struck-through row shows the pre-discount price.
         """
         prices = []
-        for row in price_table.find_all("tr", recursive=False):
+        for row in self._direct_rows(price_table):
             cells = row.find_all("td", recursive=False)
             if len(cells) != 2:
                 continue
@@ -154,6 +154,23 @@ class ReceiptParser:
                 return self._to_cents(euro, cent)
 
         return None
+
+    @staticmethod
+    def _direct_rows(table: Tag) -> list[Tag]:
+        """Return a table's <tr> children, looking through an optional <tbody>.
+
+        Some email clients (e.g. Gmail, on forward) wrap a table's <tr>
+        elements in an implicit <tbody> that Picnic's original HTML does not
+        have.
+        """
+        rows = table.find_all("tr", recursive=False)
+        if rows:
+            return rows
+
+        rows = []
+        for tbody in table.find_all("tbody", recursive=False):
+            rows.extend(tbody.find_all("tr", recursive=False))
+        return rows
 
     @staticmethod
     def _to_cents(euro: str, cent: str) -> int:
