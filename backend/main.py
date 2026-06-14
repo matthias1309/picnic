@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
+from backend.api.routes import api_router
 from backend.config import settings
 from backend.database import init_db, SessionLocal
 from backend.models import Receipt
@@ -22,7 +23,7 @@ from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
-    level=settings.log_level,
+    level=settings.log_level.upper(),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ def poll_emails_task():
                 # Parse received date (simple: use raw string if parse fails)
                 try:
                     from email.utils import parsedate_to_datetime
+
                     received_date = parsedate_to_datetime(received_date_str)
                 except Exception:
                     received_date = datetime.utcnow()
@@ -213,6 +215,7 @@ async def root():
     }
 
 
+router.include_router(api_router)
 app.include_router(router)
 
 
