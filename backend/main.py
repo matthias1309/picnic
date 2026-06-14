@@ -176,11 +176,16 @@ async def lifespan(app: FastAPI):
 
 
 # Create FastAPI app
+# In production, the interactive docs and raw OpenAPI schema are disabled so
+# the full API surface (including auth endpoints) isn't publicly browsable.
 app = FastAPI(
     title="Picnic Expense Tracker API",
     description="API for tracking Picnic grocery expenses",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
 )
 
 # Add CORS middleware

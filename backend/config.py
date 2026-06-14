@@ -43,6 +43,16 @@ class Settings(BaseSettings):
         """Parsed CORS origins, split from the comma-separated setting."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
+    @property
+    def is_production(self) -> bool:
+        """Whether the app is running in production.
+
+        Security-sensitive behavior (cookie `Secure` flag, API docs exposure)
+        is gated on this rather than `debug`, so a misconfigured `DEBUG` value
+        cannot accidentally weaken it.
+        """
+        return self.environment.lower() == "production"
+
     class Config:
         """Pydantic config."""
 
