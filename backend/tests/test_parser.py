@@ -121,3 +121,49 @@ def test_parse_extracts_stated_total(picnic_receipt_html):
 
     # Assert
     assert parsed.stated_total_cents == 1320
+
+
+# TC-008-01: Prices are extracted when price table rows are wrapped in <tbody>
+def test_parse_extracts_prices_with_tbody_wrapped_rows(picnic_receipt_forwarded_html):
+    """
+    Given the HTML of a Picnic invoice where the price table's <tr> rows are
+    wrapped in a <tbody> element (fixture: picnic_receipt_forwarded.html)
+    When ReceiptParser.parse() is called
+    Then "Max Premium Pistazien" has quantity=1, unit_price_cents=454 and
+    line_total_cents=454, matching the non-wrapped HTML (TC-002-03)
+    """
+    # Arrange
+    parser = ReceiptParser()
+
+    # Act
+    parsed = parser.parse(picnic_receipt_forwarded_html)
+
+    # Assert
+    pistazien = next(item for item in parsed.items if item.name == "Max Premium Pistazien")
+    assert pistazien.quantity == 1
+    assert pistazien.line_total_cents == 454
+    assert pistazien.unit_price_cents == 454
+
+
+# TC-008-02: "Gratis" items remain zero-priced with <tbody>-wrapped tables
+def test_parse_handles_free_gratis_item_with_tbody_wrapped_rows(picnic_receipt_forwarded_html):
+    """
+    Given the HTML of a Picnic invoice where tables are wrapped in <tbody>
+    elements and one item is part of a "2+1 gratis" promotion with no price
+    table rows (fixture: picnic_receipt_forwarded.html)
+    When ReceiptParser.parse() is called
+    Then that item has unit_price_cents=0 and line_total_cents=0
+    """
+    # Arrange
+    parser = ReceiptParser()
+
+    # Act
+    parsed = parser.parse(picnic_receipt_forwarded_html)
+
+    # Assert
+    free_item = next(
+        item for item in parsed.items if item.name == "CORNY Müsliriegel Schoko Banane"
+    )
+    assert free_item.quantity == 2
+    assert free_item.unit_price_cents == 0
+    assert free_item.line_total_cents == 0
