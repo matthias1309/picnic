@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # CORS Configuration (for frontend), as a comma-separated list of origins
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
+    # Statistics Configuration
+    monthly_budget_cents: int = 0
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parsed CORS origins, split from the comma-separated setting."""
