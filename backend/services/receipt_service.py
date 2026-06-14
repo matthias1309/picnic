@@ -6,8 +6,10 @@ Traces: ARCH-002
 
 import logging
 from dataclasses import dataclass
+from datetime import date
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import Session, selectinload
 
 from backend.imap.parser import ParseError, ParsedReceipt, ReceiptParser
 from backend.models import PriceHistory, Product, Receipt, ReceiptItem
@@ -56,8 +58,7 @@ def parse_pending_receipts(db: Session, parser: ReceiptParser | None = None) -> 
         item_count += len(parsed_receipt.items)
 
     logger.info(
-        f"Parsing complete: {parsed_count} parsed, {failed_count} failed, "
-        f"{item_count} items stored"
+        f"Parsing complete: {parsed_count} parsed, {failed_count} failed, {item_count} items stored"
     )
     return ParseSummary(parsed=parsed_count, failed=failed_count, items=item_count)
 
@@ -107,3 +108,66 @@ def _reconcile_total(receipt: Receipt, parsed_receipt: ParsedReceipt) -> None:
             f"Receipt {receipt.id}: computed total {computed_total_cents} cents does not "
             f"match stated total {parsed_receipt.stated_total_cents} cents"
         )
+
+
+def list_receipts(
+    db: Session,
+    limit: int,
+    offset: int,
+    from_date: date | None = None,
+    to_date: date | None = None,
+) -> tuple[list[Receipt], int]:
+    """Return a page of receipts (newest first) and the total matching count."""
+    query = db.query(Receipt)
+    if from_date is not None:
+        query = query.filter(func.date(Receipt.received_date) >= from_date)
+    if to_date is not None:
+        query = query.filter(func.date(Receipt.received_date) <= to_date)
+
+    total = query.count()
+    receipts = (
+        query.options(selectinload(Receipt.items))
+        .order_by(Receipt.received_date.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+    return receipts, total
+
+
+def get_receipt_with_items(db: Session, receipt_id: int) -> Receipt | None:
+    """Return a receipt with its items and their products eagerly loaded."""
+    return (
+        db.query(Receipt)
+        .options(selectinload(Receipt.items).selectinload(ReceiptItem.product))
+        .filter(Receipt.id == receipt_id)
+        .first()
+    )
+
+
+def list_products(db: Session) -> list[tuple[Product, int]]:
+    """Return all products with their purchase counts, ordered by name (AC-003-03)."""
+    return (
+        db.query(Product, func.count(ReceiptItem.id))
+        .outerjoin(ReceiptItem, ReceiptItem.product_id == Product.id)
+        .group_by(Product.id)
+        .order_by(Product.name)
+        .all()
+    )
+
+
+def get_product_with_price_history(
+    db: Session, product_id: int
+) -> tuple[Product, list[PriceHistory]] | None:
+    """Return a product and its price history, ordered oldest-first (AC-003-04)."""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if product is None:
+        return None
+
+    history = (
+        db.query(PriceHistory)
+        .filter(PriceHistory.product_id == product_id)
+        .order_by(PriceHistory.recorded_date.asc())
+        .all()
+    )
+    return product, history
