@@ -313,6 +313,25 @@ export interface ReceiptDetail {
    config). `pages/Settings.tsx` is deferred until a concrete requirement
    exists.
 
+7. **Production base path `/picnic-frontend/`** — the built SPA is served
+   by Uberspace as static files under `https://matt-maxx.de/picnic-frontend/`
+   (document root `~/html/picnic-frontend/`), separate from the backend's
+   `/picnic/api/*` path-based proxy (see `backend/main.py`). Both live under
+   the same origin (`matt-maxx.de`), so `src/api/client.ts`'s relative
+   `/picnic/api` base path works unchanged regardless of where the page
+   itself is served from.
+   - `vite.config.ts` sets `base: "/picnic-frontend/"` only for `vite build`
+     (the dev server keeps `base: "/"` so `npm run dev` needs no prefix).
+   - `main.tsx` passes `import.meta.env.BASE_URL` (Vite's reflection of
+     `base`) as the React Router `basename`, so routing works under both
+     the dev root and the production sub-path without per-environment code.
+   - `scripts/deploy.sh` copies `frontend/dist` to `~/html/picnic-frontend/`
+     after `npm run build`. This is a deployment-script change with no
+     testable application logic — covered by the existing build/lint/test
+     gates in CI, not by new unit tests (TDD exception per
+     `.claude/rules/v-model.md`: "provably untestable... one-off
+     migration/deployment script").
+
 ---
 
 ## Out of Scope
