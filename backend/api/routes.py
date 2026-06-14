@@ -6,24 +6,35 @@ Implements: REQ-003 (AC-003-01 .. AC-003-06)
 """
 
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_db
+from backend.config import settings
 from backend.schemas import (
+    BudgetStatus,
     PaginatedReceipts,
     PriceHistoryPoint,
+    PriceTrend,
+    PriceTrendPoint,
     ProductOut,
     ProductPriceHistory,
     ReceiptDetail,
     ReceiptItemOut,
     ReceiptSummary,
+    SpendingBucket,
+    SpendingOverTime,
+    SummaryStats,
+    TopItem,
 )
-from backend.services import receipt_service
+from backend.services import receipt_service, stats_service
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
+DEFAULT_TOP_ITEMS_LIMIT = 10
+MONTH_PATTERN = r"^\d{4}-\d{2}$"
 
 api_router = APIRouter(prefix="/api")
 
@@ -104,3 +115,94 @@ def get_product_price_history(
         for entry in history
     ]
     return ProductPriceHistory(product_id=product.id, product_name=product.name, points=points)
+
+
+@api_router.get("/stats/spending", response_model=SpendingOverTime)
+def get_spending(
+    granularity: Literal["week", "month"] = "month",
+    from_date: date | None = None,
+    to_date: date | None = None,
+    db: Session = Depends(get_db),
+) -> SpendingOverTime:
+    """Get total spending grouped by week or month (AC-004-01)."""
+    buckets = stats_service.get_spending_over_time(db, granularity, from_date, to_date)
+    return SpendingOverTime(
+        granularity=granularity,
+        buckets=[SpendingBucket(period=period, total_cents=total) for period, total in buckets],
+    )
+
+
+@api_router.get("/stats/top-items", response_model=list[TopItem])
+def get_top_items(
+    limit: int = Query(DEFAULT_TOP_ITEMS_LIMIT, ge=1, le=MAX_PAGE_SIZE),
+    db: Session = Depends(get_db),
+) -> list[TopItem]:
+    """Get the most frequently purchased products (AC-004-02)."""
+    return [
+        TopItem(
+            product_id=product.id,
+            product_name=product.name,
+            total_quantity=total_quantity,
+            total_spend_cents=total_spend_cents,
+        )
+        for product, total_quantity, total_spend_cents in stats_service.get_top_items(db, limit)
+    ]
+
+
+@api_router.get("/stats/price-trend/{product_id}", response_model=PriceTrend)
+def get_price_trend(
+    product_id: int,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    db: Session = Depends(get_db),
+) -> PriceTrend:
+    """Get a product's price trend with min/max/avg unit price (AC-004-03)."""
+    result = stats_service.get_price_trend(db, product_id, from_date, to_date)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    product, points, min_price_cents, max_price_cents, avg_price_cents = result
+    return PriceTrend(
+        product_id=product.id,
+        product_name=product.name,
+        points=[
+            PriceTrendPoint(
+                date=point.recorded_date,
+                unit_price_cents=point.unit_price_cents,
+                quantity=point.quantity,
+            )
+            for point in points
+        ],
+        min_price_cents=min_price_cents,
+        max_price_cents=max_price_cents,
+        avg_price_cents=avg_price_cents,
+    )
+
+
+@api_router.get("/stats/budget", response_model=BudgetStatus)
+def get_budget(
+    month: str = Query(..., pattern=MONTH_PATTERN),
+    db: Session = Depends(get_db),
+) -> BudgetStatus:
+    """Get configured budget vs. actual spend for a month (AC-004-04)."""
+    spent_cents = stats_service.get_spent_for_month(db, month)
+    budget_cents = settings.monthly_budget_cents
+    return BudgetStatus(
+        month=month,
+        budget_cents=budget_cents,
+        spent_cents=spent_cents,
+        remaining_cents=budget_cents - spent_cents,
+    )
+
+
+@api_router.get("/stats/summary", response_model=SummaryStats)
+def get_summary(db: Session = Depends(get_db)) -> SummaryStats:
+    """Get headline spending figures (AC-004-05)."""
+    summary = stats_service.get_summary(db)
+    return SummaryStats(
+        total_spend_cents=summary.total_spend_cents,
+        receipt_count=summary.receipt_count,
+        distinct_product_count=summary.distinct_product_count,
+        average_basket_cents=summary.average_basket_cents,
+        current_month_spend_cents=summary.current_month_spend_cents,
+    )

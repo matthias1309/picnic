@@ -69,3 +69,64 @@ class ProductPriceHistory(BaseModel):
     product_id: int
     product_name: str
     points: list[PriceHistoryPoint]
+
+
+class SpendingBucket(BaseModel):
+    """A single period's total spend (AC-004-01)."""
+
+    period: str
+    total_cents: int
+
+
+class SpendingOverTime(BaseModel):
+    """Spending grouped by period (AC-004-01)."""
+
+    granularity: str
+    buckets: list[SpendingBucket]
+
+
+class TopItem(BaseModel):
+    """A frequently purchased product with its totals (AC-004-02)."""
+
+    product_id: int
+    product_name: str
+    total_quantity: int
+    total_spend_cents: int
+
+
+class PriceTrendPoint(BaseModel):
+    """A single point in a product's price trend (AC-004-03)."""
+
+    date: datetime
+    unit_price_cents: int
+    quantity: int
+
+
+class PriceTrend(BaseModel):
+    """Price trend time series with summary statistics (AC-004-03)."""
+
+    product_id: int
+    product_name: str
+    points: list[PriceTrendPoint]
+    min_price_cents: int
+    max_price_cents: int
+    avg_price_cents: int
+
+
+class BudgetStatus(BaseModel):
+    """Configured budget vs. actual spend for a month (AC-004-04)."""
+
+    month: str
+    budget_cents: int
+    spent_cents: int
+    remaining_cents: int
+
+
+class SummaryStats(BaseModel):
+    """Headline spending figures (AC-004-05)."""
+
+    total_spend_cents: int
+    receipt_count: int
+    distinct_product_count: int
+    average_basket_cents: int
+    current_month_spend_cents: int
