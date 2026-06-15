@@ -71,12 +71,18 @@ class IMAPClient:
             finally:
                 self.connection = None
 
-    def fetch_new_emails(self, mailbox: str = "INBOX") -> List[Message]:
+    def fetch_new_emails(
+        self, mailbox: str = "INBOX", subject_filter: str | None = None
+    ) -> List[Message]:
         """
-        Fetch all unread emails from mailbox.
+        Fetch emails from mailbox, optionally restricted to a subject filter.
 
         Args:
             mailbox: Mailbox folder name (default INBOX)
+            subject_filter: If given, only emails whose subject contains this
+                string (case-insensitive substring match, per IMAP SEARCH
+                SUBJECT semantics) are fetched. If None, all emails are
+                fetched.
 
         Returns:
             List of email.Message objects
@@ -96,8 +102,11 @@ class IMAPClient:
                 logger.warning(f"Failed to select mailbox {mailbox}")
                 return emails
 
-            # Search for all emails
-            status, message_ids = self.connection.search(None, "ALL")
+            # Search for matching emails
+            if subject_filter:
+                status, message_ids = self.connection.search(None, "SUBJECT", f'"{subject_filter}"')
+            else:
+                status, message_ids = self.connection.search(None, "ALL")
             if status != "OK":
                 logger.warning("Failed to search emails")
                 return emails

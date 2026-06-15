@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     imap_password: str = ""
     imap_mailbox: str = "INBOX"
     imap_use_ssl: bool = True
+    imap_subject_filter: str = "Dein Bon"
 
     # Polling Configuration
     polling_interval: int = 1800  # 30 minutes in seconds

@@ -54,8 +54,10 @@ def poll_emails_task():
 
         imap_client.connect()
 
-        # Fetch new emails
-        messages = imap_client.fetch_new_emails(settings.imap_mailbox)
+        # Fetch new emails matching the configured subject filter
+        messages = imap_client.fetch_new_emails(
+            settings.imap_mailbox, subject_filter=settings.imap_subject_filter
+        )
 
         # Store in database
         db = SessionLocal()
