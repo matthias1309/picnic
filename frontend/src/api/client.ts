@@ -44,3 +44,15 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
   }
   return (await response.json()) as T;
 }
+
+export async function deleteJson(path: string): Promise<void> {
+  const url = new URL(`${API_BASE}${path}`, window.location.origin);
+
+  const response = await fetch(url.pathname, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new ApiError(`Request to ${path} failed with status ${response.status}`, response.status);
+  }
+}

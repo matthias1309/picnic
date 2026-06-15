@@ -317,3 +317,58 @@ def test_list_receipts_empty(client):
     body = response.json()
     assert body["items"] == []
     assert body["total"] == 0
+
+
+# TC-009-03: DELETE /api/receipts/{id} removes a receipt and returns 204
+def test_delete_receipt_returns_204_and_removes_receipt(client, db_session):
+    """
+    Given a receipt with id X exists with 1 item and 1 price_history entry
+    When the client sends DELETE /picnic/api/receipts/{X}
+    Then a 204 response is returned with an empty body
+    And GET /picnic/api/receipts/{X} subsequently returns 404
+    And GET /picnic/api/receipts no longer lists receipt X
+    """
+    # Arrange
+    product = Product(name="Milch")
+    receipt = _make_receipt("r1@picnic.app", datetime(2026, 1, 1, 10, 0))
+    db_session.add_all([product, receipt])
+    db_session.flush()
+    db_session.add(_make_item(receipt, product, quantity=1, unit_price_cents=100))
+    db_session.add(
+        PriceHistory(
+            product=product,
+            receipt_id=receipt.id,
+            unit_price_cents=100,
+            quantity=1,
+            recorded_date=receipt.received_date,
+        )
+    )
+    db_session.commit()
+    receipt_id = receipt.id
+
+    # Act
+    response = client.delete(f"{BASE}/receipts/{receipt_id}")
+
+    # Assert
+    assert response.status_code == 204
+    assert response.content == b""
+
+    get_response = client.get(f"{BASE}/receipts/{receipt_id}")
+    assert get_response.status_code == 404
+
+    list_response = client.get(f"{BASE}/receipts")
+    assert receipt_id not in [item["id"] for item in list_response.json()["items"]]
+
+
+# TC-009-04: DELETE /api/receipts/{id} returns 404 for a non-existent receipt
+def test_delete_receipt_not_found_returns_404(client):
+    """
+    Given no receipt with id 999 exists
+    When the client sends DELETE /picnic/api/receipts/999
+    Then a 404 response is returned
+    And the response body is {"detail": "Receipt not found"}
+    """
+    response = client.delete(f"{BASE}/receipts/999")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Receipt not found"}

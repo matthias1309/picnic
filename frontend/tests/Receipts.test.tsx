@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Receipts } from "../src/pages/Receipts";
 import * as apiClient from "../src/api/client";
@@ -110,5 +111,93 @@ describe("Receipts", () => {
     expect(detail).toHaveTextContent("1,98 €");
     expect(detail).toHaveTextContent("Milk");
     expect(detail).toHaveTextContent("3,07 €");
+  });
+
+  // TC-009-05
+  // Given the user is viewing a receipt's detail page
+  // When the page is rendered
+  // Then a button labeled "Delete receipt" is visible
+  it("shows a delete receipt button on the receipt detail page", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
+      if (path === "/receipts/3") return Promise.resolve(RECEIPT_DETAIL_FIXTURE);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    // Act
+    renderWithProviders(
+      <Routes>
+        <Route path="/receipts/:id" element={<Receipts />} />
+      </Routes>,
+      { route: "/receipts/3" },
+    );
+
+    // Assert
+    await screen.findByTestId("receipt-detail");
+    expect(screen.getByRole("button", { name: "Delete receipt" })).toBeInTheDocument();
+  });
+
+  // TC-009-06
+  // Given the user is viewing a receipt's detail page
+  // And window.confirm is mocked to return true
+  // When they click "Delete receipt"
+  // Then a DELETE request is sent to /receipts/{id}
+  // And the user is navigated to /receipts
+  it("deletes the receipt and navigates to the list when confirmed", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
+      if (path === "/receipts/3") return Promise.resolve(RECEIPT_DETAIL_FIXTURE);
+      if (path === "/receipts") return Promise.resolve(RECEIPTS_FIXTURE);
+      throw new Error(`unexpected path: ${path}`);
+    });
+    const deleteJson = vi.spyOn(apiClient, "deleteJson").mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+
+    // Act
+    renderWithProviders(
+      <Routes>
+        <Route path="/receipts" element={<Receipts />} />
+        <Route path="/receipts/:id" element={<Receipts />} />
+      </Routes>,
+      { route: "/receipts/3" },
+    );
+    await screen.findByTestId("receipt-detail");
+    await user.click(screen.getByRole("button", { name: "Delete receipt" }));
+
+    // Assert
+    expect(deleteJson).toHaveBeenCalledWith("/receipts/3");
+    await waitFor(() => expect(screen.getByTestId("receipt-list")).toBeInTheDocument());
+  });
+
+  // TC-009-07
+  // Given the user is viewing a receipt's detail page
+  // And window.confirm is mocked to return false
+  // When they click "Delete receipt"
+  // Then no DELETE request is sent
+  // And the receipt detail remains visible
+  it("does not delete the receipt when the confirmation is cancelled", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
+      if (path === "/receipts/3") return Promise.resolve(RECEIPT_DETAIL_FIXTURE);
+      throw new Error(`unexpected path: ${path}`);
+    });
+    const deleteJson = vi.spyOn(apiClient, "deleteJson").mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+
+    // Act
+    renderWithProviders(
+      <Routes>
+        <Route path="/receipts/:id" element={<Receipts />} />
+      </Routes>,
+      { route: "/receipts/3" },
+    );
+    await screen.findByTestId("receipt-detail");
+    await user.click(screen.getByRole("button", { name: "Delete receipt" }));
+
+    // Assert
+    expect(deleteJson).not.toHaveBeenCalled();
+    expect(screen.getByTestId("receipt-detail")).toBeInTheDocument();
   });
 });
