@@ -277,6 +277,72 @@ def test_budget_rejects_malformed_month(client):
     assert "detail" in response.json()
 
 
+# TC-011-04: PUT /api/settings/budget updates the budget and returns it
+def test_update_budget_persists_new_value(client):
+    """
+    Given the client is authenticated
+    When the client sends PUT /picnic/api/settings/budget
+      with body {"monthly_budget_cents": 35000}
+    Then a 200 response is returned
+    And the response body is {"monthly_budget_cents": 35000}
+    And a subsequent GET /picnic/api/stats/budget?month=2026-06
+      returns budget_cents = 35000
+    """
+    # Act
+    response = client.put(f"{BASE}/settings/budget", json={"monthly_budget_cents": 35000})
+
+    # Assert
+    assert response.status_code == 200
+    assert response.json() == {"monthly_budget_cents": 35000}
+
+    budget_response = client.get(f"{BASE}/stats/budget?month=2026-06")
+    assert budget_response.json()["budget_cents"] == 35000
+
+
+# TC-011-05: PUT /api/settings/budget rejects a negative value
+def test_update_budget_rejects_negative_value(client, monkeypatch):
+    """
+    Given the client is authenticated
+    And the configured budget is currently 30000
+    When the client sends PUT /picnic/api/settings/budget
+      with body {"monthly_budget_cents": -1}
+    Then a 422 response is returned
+    And a subsequent GET /picnic/api/stats/budget?month=2026-06
+      still returns budget_cents = 30000 (unchanged)
+    """
+    # Arrange
+    monkeypatch.setattr(settings, "monthly_budget_cents", 30000)
+
+    # Act
+    response = client.put(f"{BASE}/settings/budget", json={"monthly_budget_cents": -1})
+
+    # Assert
+    assert response.status_code == 422
+
+    budget_response = client.get(f"{BASE}/stats/budget?month=2026-06")
+    assert budget_response.json()["budget_cents"] == 30000
+
+
+# TC-011-06: GET /api/stats/budget reflects the persisted value across months
+def test_budget_persists_across_months(client):
+    """
+    Given the client has set the budget to 35000 via PUT /api/settings/budget
+    When the client requests GET /picnic/api/stats/budget?month=2026-01
+      and GET /picnic/api/stats/budget?month=2026-06
+    Then both responses have budget_cents = 35000
+    """
+    # Arrange
+    client.put(f"{BASE}/settings/budget", json={"monthly_budget_cents": 35000})
+
+    # Act
+    january = client.get(f"{BASE}/stats/budget?month=2026-01")
+    june = client.get(f"{BASE}/stats/budget?month=2026-06")
+
+    # Assert
+    assert january.json()["budget_cents"] == 35000
+    assert june.json()["budget_cents"] == 35000
+
+
 # TC-004-11: Empty-data handling across all statistics endpoints
 @pytest.mark.parametrize(
     "path",
