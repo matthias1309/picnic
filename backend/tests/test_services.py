@@ -8,7 +8,9 @@ Verifies: REQ-002 (AC-002-01, AC-002-02, AC-002-03, AC-002-04, AC-002-05, AC-002
 import logging
 from datetime import datetime
 
-from backend.models import PriceHistory, Product, Receipt, ReceiptItem
+from backend.config import settings
+from backend.models import BudgetSetting, PriceHistory, Product, Receipt, ReceiptItem
+from backend.services import budget_service
 from backend.services.receipt_service import ParseSummary, delete_receipt, parse_pending_receipts
 
 RECEIVED_DATE = datetime(2026, 6, 1, 20, 45)
@@ -265,3 +267,62 @@ def test_delete_receipt_returns_false_when_not_found(db_session):
 
     # Assert
     assert result is False
+
+
+# TC-011-01: get_monthly_budget_cents falls back to the .env default when unset
+def test_get_monthly_budget_cents_falls_back_to_env_default(db_session, monkeypatch):
+    """
+    Given no budget_settings row exists
+    And settings.monthly_budget_cents is 30000
+    When budget_service.get_monthly_budget_cents(db) is called
+    Then it returns 30000
+    """
+    # Arrange
+    monkeypatch.setattr(settings, "monthly_budget_cents", 30000)
+
+    # Act
+    result = budget_service.get_monthly_budget_cents(db_session)
+
+    # Assert
+    assert result == 30000
+
+
+# TC-011-02: set_monthly_budget_cents persists a new value
+def test_set_monthly_budget_cents_persists_new_value(db_session, monkeypatch):
+    """
+    Given no budget_settings row exists
+    When budget_service.set_monthly_budget_cents(db, 35000) is called
+    Then it returns 35000
+    And budget_service.get_monthly_budget_cents(db) subsequently returns 35000
+      (independent of settings.monthly_budget_cents)
+    """
+    # Arrange
+    monkeypatch.setattr(settings, "monthly_budget_cents", 30000)
+
+    # Act
+    result = budget_service.set_monthly_budget_cents(db_session, 35000)
+
+    # Assert
+    assert result == 35000
+    assert budget_service.get_monthly_budget_cents(db_session) == 35000
+
+
+# TC-011-03: set_monthly_budget_cents updates an existing value
+def test_set_monthly_budget_cents_updates_existing_value(db_session):
+    """
+    Given budget_service.set_monthly_budget_cents(db, 35000) was already called
+    When budget_service.set_monthly_budget_cents(db, 40000) is called
+    Then it returns 40000
+    And budget_service.get_monthly_budget_cents(db) returns 40000
+    And only one row exists in budget_settings
+    """
+    # Arrange
+    budget_service.set_monthly_budget_cents(db_session, 35000)
+
+    # Act
+    result = budget_service.set_monthly_budget_cents(db_session, 40000)
+
+    # Assert
+    assert result == 40000
+    assert budget_service.get_monthly_budget_cents(db_session) == 40000
+    assert db_session.query(BudgetSetting).count() == 1

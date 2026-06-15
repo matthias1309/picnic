@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchJson } from "../api/client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchJson, putJson } from "../api/client";
 import type {
+  BudgetSettingOut,
+  BudgetSettingUpdate,
   BudgetStatus,
   PriceTrend,
   SpendingGranularity,
@@ -20,6 +22,17 @@ export function useBudget(month: string) {
   return useQuery({
     queryKey: ["stats", "budget", month],
     queryFn: () => fetchJson<BudgetStatus>("/stats/budget", { month }),
+  });
+}
+
+export function useUpdateBudget() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: BudgetSettingUpdate) =>
+      putJson<BudgetSettingOut>("/settings/budget", payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stats", "budget"] });
+    },
   });
 }
 

@@ -12,8 +12,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_db
-from backend.config import settings
 from backend.schemas import (
+    BudgetSettingOut,
+    BudgetSettingUpdate,
     BudgetStatus,
     PaginatedReceipts,
     PriceHistoryPoint,
@@ -29,7 +30,7 @@ from backend.schemas import (
     SummaryStats,
     TopItem,
 )
-from backend.services import receipt_service, stats_service
+from backend.services import budget_service, receipt_service, stats_service
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
@@ -188,14 +189,26 @@ def get_price_trend(
     )
 
 
+@api_router.put("/settings/budget", response_model=BudgetSettingOut)
+def update_budget(
+    payload: BudgetSettingUpdate,
+    db: Session = Depends(get_db),
+) -> BudgetSettingOut:
+    """Update the configured monthly budget (AC-011-03, AC-011-05, AC-011-06)."""
+    monthly_budget_cents = budget_service.set_monthly_budget_cents(
+        db, payload.monthly_budget_cents
+    )
+    return BudgetSettingOut(monthly_budget_cents=monthly_budget_cents)
+
+
 @api_router.get("/stats/budget", response_model=BudgetStatus)
 def get_budget(
     month: str = Query(..., pattern=MONTH_PATTERN),
     db: Session = Depends(get_db),
 ) -> BudgetStatus:
-    """Get configured budget vs. actual spend for a month (AC-004-04)."""
+    """Get configured budget vs. actual spend for a month (AC-004-04, AC-011-06)."""
     spent_cents = stats_service.get_spent_for_month(db, month)
-    budget_cents = settings.monthly_budget_cents
+    budget_cents = budget_service.get_monthly_budget_cents(db)
     return BudgetStatus(
         month=month,
         budget_cents=budget_cents,

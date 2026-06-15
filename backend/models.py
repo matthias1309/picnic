@@ -167,3 +167,22 @@ class PriceHistory(Base):
             f"<PriceHistory(product_id={self.product_id}, "
             f"unit_price_cents={self.unit_price_cents}, recorded_date={self.recorded_date})>"
         )
+
+
+class BudgetSetting(Base):
+    """Singleton row holding the configured monthly budget (AC-011-06)."""
+
+    __tablename__ = "budget_settings"
+
+    id = Column(Integer, primary_key=True)
+    monthly_budget_cents = Column(Integer, nullable=False)
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        server_default=func.now(),
+    )
+
+    def __repr__(self):
+        return f"<BudgetSetting(monthly_budget_cents={self.monthly_budget_cents})>"

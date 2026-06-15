@@ -6,7 +6,7 @@ Traces: ARCH-003, ARCH-006
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
@@ -134,6 +134,18 @@ class BudgetStatus(BaseModel):
     budget_cents: int
     spent_cents: int
     remaining_cents: int
+
+
+class BudgetSettingUpdate(BaseModel):
+    """Request body for PUT /api/settings/budget (AC-011-03, AC-011-05)."""
+
+    monthly_budget_cents: int = Field(ge=0)
+
+
+class BudgetSettingOut(BaseModel):
+    """Response body for PUT /api/settings/budget (AC-011-03)."""
+
+    monthly_budget_cents: int
 
 
 class SummaryStats(BaseModel):

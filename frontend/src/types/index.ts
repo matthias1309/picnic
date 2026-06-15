@@ -18,6 +18,14 @@ export interface BudgetStatus {
   remaining_cents: number;
 }
 
+export interface BudgetSettingUpdate {
+  monthly_budget_cents: number;
+}
+
+export interface BudgetSettingOut {
+  monthly_budget_cents: number;
+}
+
 export interface SpendingBucket {
   period: string;
   total_cents: number;
