@@ -13,7 +13,7 @@ import imaplib
 
 from backend.imap.client import IMAPClient
 from backend.models import Receipt
-from backend.config import Settings
+from backend.config import Settings, settings
 
 
 # TC-001-01: IMAP connection with valid credentials succeeds
@@ -337,3 +337,156 @@ def test_config_parses_comma_separated_cors_origins(tmp_path):
     assert settings.cors_origins_list == ["https://matt-maxx.de", "http://localhost:5173"]
     assert settings.polling_interval == 1800
     assert isinstance(settings.polling_interval, int)
+
+
+# TC-010-01: fetch_new_emails searches by subject when a filter is given
+@patch("imaplib.IMAP4_SSL")
+def test_fetch_new_emails_searches_by_subject_when_filter_given(mock_imap4_ssl):
+    """
+    Given an IMAPClient is connected
+    When fetch_new_emails(mailbox, subject_filter="Dein Bon") is called
+    Then connection.search is called with SUBJECT "Dein Bon"
+    And connection.search is not called with "ALL"
+    """
+    # Arrange
+    mock_instance = MagicMock()
+    mock_imap4_ssl.return_value = mock_instance
+    mock_instance.login.return_value = None
+    mock_instance.select.return_value = ("OK", [b"0"])
+    mock_instance.search.return_value = ("OK", [b""])
+
+    client = IMAPClient("localhost", 993, "test@example.com", "secret", use_ssl=True)
+    client.connect()
+
+    # Act
+    emails = client.fetch_new_emails("INBOX", subject_filter="Dein Bon")
+
+    # Assert
+    mock_instance.search.assert_called_once_with(None, "SUBJECT", '"Dein Bon"')
+    assert emails == []
+
+
+# TC-010-02: fetch_new_emails falls back to SEARCH ALL without a filter
+@patch("imaplib.IMAP4_SSL")
+def test_fetch_new_emails_searches_all_without_filter(mock_imap4_ssl):
+    """
+    Given an IMAPClient is connected
+    When fetch_new_emails(mailbox) is called without a subject_filter
+    Then connection.search is called with "ALL"
+    """
+    # Arrange
+    mock_instance = MagicMock()
+    mock_imap4_ssl.return_value = mock_instance
+    mock_instance.login.return_value = None
+    mock_instance.select.return_value = ("OK", [b"0"])
+    mock_instance.search.return_value = ("OK", [b""])
+
+    client = IMAPClient("localhost", 993, "test@example.com", "secret", use_ssl=True)
+    client.connect()
+
+    # Act
+    client.fetch_new_emails("INBOX")
+
+    # Assert
+    mock_instance.search.assert_called_once_with(None, "ALL")
+
+
+# TC-010-03: Only matching emails are fetched
+@patch("imaplib.IMAP4_SSL")
+def test_fetch_new_emails_only_fetches_matching_messages(mock_imap4_ssl):
+    """
+    Given the IMAP server's SEARCH SUBJECT "Dein Bon" returns only message IDs
+      for emails with "Dein Bon" in the subject
+    When fetch_new_emails(mailbox, subject_filter="Dein Bon") is called
+    Then only those messages are fetched and returned
+    And no FETCH is issued for non-matching message IDs
+    """
+    # Arrange
+    mock_instance = MagicMock()
+    mock_imap4_ssl.return_value = mock_instance
+    mock_instance.login.return_value = None
+    mock_instance.select.return_value = ("OK", [b"3"])
+    mock_instance.search.return_value = ("OK", [b"2 3"])
+
+    msg = EmailMessage()
+    msg["Message-ID"] = "bon@picnic.app"
+    msg["From"] = "noreply@picnic.app"
+    msg["Subject"] = "Dein Bon"
+    msg["Date"] = "Wed, 12 Jun 2026 14:30:00 +0200"
+    msg.set_content("Bon")
+
+    mock_instance.fetch.side_effect = [
+        ("OK", [(None, msg.as_bytes())]),
+        ("OK", [(None, msg.as_bytes())]),
+    ]
+
+    client = IMAPClient("localhost", 993, "test@example.com", "secret", use_ssl=True)
+    client.connect()
+
+    # Act
+    emails = client.fetch_new_emails("INBOX", subject_filter="Dein Bon")
+
+    # Assert
+    assert len(emails) == 2
+    fetched_ids = [call.args[0] for call in mock_instance.fetch.call_args_list]
+    assert fetched_ids == [b"2", b"3"]
+
+
+# TC-010-04: poll_emails_task passes the configured subject filter
+@patch("backend.main.SessionLocal")
+@patch("backend.main.IMAPClient")
+def test_polling_task_passes_configured_subject_filter(
+    mock_imap_client, mock_session_local, db_session
+):
+    """
+    Given settings.imap_subject_filter is "Dein Bon" (default)
+    When poll_emails_task() runs
+    Then imap_client.fetch_new_emails is called with subject_filter="Dein Bon"
+    """
+    # Arrange
+    mock_instance = MagicMock()
+    mock_imap_client.return_value = mock_instance
+    mock_instance.fetch_new_emails.return_value = []
+
+    mock_session_local.return_value = db_session
+
+    from backend.main import poll_emails_task
+
+    # Act
+    poll_emails_task()
+
+    # Assert
+    mock_instance.fetch_new_emails.assert_called_once_with(
+        settings.imap_mailbox, subject_filter=settings.imap_subject_filter
+    )
+
+
+# TC-010-05: imap_subject_filter setting defaults to "Dein Bon" and is configurable
+def test_config_defaults_subject_filter_to_dein_bon():
+    """
+    Given no IMAP_SUBJECT_FILTER is set in .env
+    When Settings are loaded
+    Then settings.imap_subject_filter == "Dein Bon"
+    """
+    # Act
+    test_settings = Settings(_env_file=None)
+
+    # Assert
+    assert test_settings.imap_subject_filter == "Dein Bon"
+
+
+def test_config_loads_custom_subject_filter(tmp_path):
+    """
+    Given .env sets IMAP_SUBJECT_FILTER=Custom Subject
+    When Settings are loaded
+    Then settings.imap_subject_filter == "Custom Subject"
+    """
+    # Arrange
+    env_file = tmp_path / ".env"
+    env_file.write_text("IMAP_SUBJECT_FILTER=Custom Subject\n")
+
+    # Act
+    test_settings = Settings(_env_file=str(env_file))
+
+    # Assert
+    assert test_settings.imap_subject_filter == "Custom Subject"
