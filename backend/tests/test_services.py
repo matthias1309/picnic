@@ -9,7 +9,7 @@ import logging
 from datetime import datetime
 
 from backend.models import PriceHistory, Product, Receipt, ReceiptItem
-from backend.services.receipt_service import ParseSummary, parse_pending_receipts
+from backend.services.receipt_service import ParseSummary, delete_receipt, parse_pending_receipts
 
 RECEIVED_DATE = datetime(2026, 6, 1, 20, 45)
 
@@ -181,3 +181,87 @@ def test_parse_pending_receipts_is_noop_when_nothing_pending(db_session):
 
     # Assert
     assert summary == ParseSummary(parsed=0, failed=0, items=0)
+
+
+# TC-009-01: delete_receipt removes a receipt, its items, and its price history
+def test_delete_receipt_removes_receipt_items_and_price_history(db_session):
+    """
+    Given a receipt exists with 2 line items and 2 price_history entries
+    When receipt_service.delete_receipt(db, receipt_id) is called
+    Then it returns True
+    And the receipt no longer exists in the database
+    And its receipt_items no longer exist
+    And its price_history entries no longer exist
+    And the referenced products are not deleted
+    """
+    # Arrange
+    milk = Product(name="Milch")
+    bread = Product(name="Brot")
+    receipt = Receipt(
+        message_id="bon-1@picnic.app",
+        received_date=RECEIVED_DATE,
+        from_address="info@service.picnic.de",
+        raw_email_text="raw",
+        processed=True,
+    )
+    db_session.add_all([milk, bread, receipt])
+    db_session.flush()
+    db_session.add_all(
+        [
+            ReceiptItem(
+                receipt=receipt,
+                product=milk,
+                quantity=2,
+                unit_price_cents=100,
+                line_total_cents=200,
+            ),
+            ReceiptItem(
+                receipt=receipt,
+                product=bread,
+                quantity=1,
+                unit_price_cents=250,
+                line_total_cents=250,
+            ),
+            PriceHistory(
+                product=milk,
+                receipt_id=receipt.id,
+                unit_price_cents=100,
+                quantity=2,
+                recorded_date=RECEIVED_DATE,
+            ),
+            PriceHistory(
+                product=bread,
+                receipt_id=receipt.id,
+                unit_price_cents=250,
+                quantity=1,
+                recorded_date=RECEIVED_DATE,
+            ),
+        ]
+    )
+    db_session.commit()
+    receipt_id = receipt.id
+
+    # Act
+    result = delete_receipt(db_session, receipt_id)
+
+    # Assert
+    assert result is True
+    assert db_session.query(Receipt).filter_by(id=receipt_id).first() is None
+    assert db_session.query(ReceiptItem).filter_by(receipt_id=receipt_id).count() == 0
+    assert db_session.query(PriceHistory).filter_by(receipt_id=receipt_id).count() == 0
+    assert db_session.query(Product).filter(Product.id.in_([milk.id, bread.id])).count() == 2
+
+
+# TC-009-02: delete_receipt returns False for a non-existent receipt
+def test_delete_receipt_returns_false_when_not_found(db_session):
+    """
+    Given no receipt with id 999 exists
+    When receipt_service.delete_receipt(db, 999) is called
+    Then it returns False
+    And no rows are deleted
+    """
+    # Act
+    result = delete_receipt(db_session, 999)
+
+    # Assert
+    assert result is False

@@ -8,7 +8,7 @@ Implements: REQ-003 (AC-003-01 .. AC-003-06)
 from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_db
@@ -85,6 +85,15 @@ def get_receipt(receipt_id: int, db: Session = Depends(get_db)) -> ReceiptDetail
         items=items,
         total_cents=sum(item.line_total_cents for item in receipt.items),
     )
+
+
+@api_router.delete("/receipts/{receipt_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_receipt(receipt_id: int, db: Session = Depends(get_db)) -> Response:
+    """Delete a receipt, its items, and its price history (AC-009-04, AC-009-05)."""
+    deleted = receipt_service.delete_receipt(db, receipt_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @api_router.get("/products", response_model=list[ProductOut])

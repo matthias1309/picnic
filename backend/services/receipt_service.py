@@ -156,6 +156,22 @@ def list_products(db: Session) -> list[tuple[Product, int]]:
     )
 
 
+def delete_receipt(db: Session, receipt_id: int) -> bool:
+    """Delete a receipt, its items, and its price history (AC-009-04).
+
+    Returns False without making changes if no receipt with the given id
+    exists (AC-009-05).
+    """
+    receipt = db.query(Receipt).filter(Receipt.id == receipt_id).first()
+    if receipt is None:
+        return False
+
+    db.query(PriceHistory).filter(PriceHistory.receipt_id == receipt_id).delete()
+    db.delete(receipt)
+    db.commit()
+    return True
+
+
 def get_product_with_price_history(
     db: Session, product_id: int
 ) -> tuple[Product, list[PriceHistory]] | None:
