@@ -3,3 +3,25 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "W", "F"]
+
+[tool.vulture]
+# Dead-code detection. Reports are advisory (CI runs it non-blocking).
+# Tests are excluded: pytest fixtures/params look "unused" but drive setup.
+paths = ["backend"]
+exclude = ["backend/tests/"]
+min_confidence = 80
+# Symbols reachable only via framework dispatch (not direct calls) would be
+# flagged as dead. Whitelist the decorators that register such entry points.
+ignore_decorators = [
+    "@*.get",
+    "@*.post",
+    "@*.put",
+    "@*.patch",
+    "@*.delete",
+    "@asynccontextmanager",
+    "@field_validator",
+    "@model_validator",
+    "@validator",
+]
+# FastAPI lifespan receives `app` by contract even when unused.
+ignore_names = ["lifespan", "app"]

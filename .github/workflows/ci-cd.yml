@@ -28,12 +28,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       - name: Lint with Ruff
         run: |
           ruff check backend/ --select=E,W,F
           echo "✓ Ruff linting passed"
+
+      - name: Dead-code scan (vulture, advisory)
+        continue-on-error: true
+        run: |
+          vulture
+          echo "✓ Vulture scan complete (advisory — does not block the build)"
 
       - name: Run tests with pytest
         run: |
@@ -93,6 +99,14 @@ jobs:
         run: |
           npm run type-check
           echo "✓ Type checking passed"
+
+      - name: Dead-code scan (knip, advisory)
+        if: steps.check.outputs.exists == 'true'
+        continue-on-error: true
+        working-directory: frontend
+        run: |
+          npm run deadcode
+          echo "✓ Knip scan complete (advisory — does not block the build)"
 
       - name: Build
         if: steps.check.outputs.exists == 'true'
