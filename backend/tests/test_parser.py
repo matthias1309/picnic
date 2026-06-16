@@ -134,6 +134,28 @@ def test_parse_current_format_ignores_summary_rows(picnic_receipt_current_html):
     assert all(item.name != "Pfand" for item in parsed.items)
 
 
+# TC-012-04: End-to-end regression on a real production invoice email
+def test_parse_original_email_extracts_all_items(picnic_receipt_original_raw):
+    """
+    Given the raw MIME of a real, anonymized Picnic "Dein Bon" email that
+    previously failed to parse in production (fixture: picnic_receipt_original.html)
+    When ReceiptParser.extract_html() then parse() are called
+    Then all 33 line items are extracted, grouped under the two order numbers
+    "209-521-1175" and "204-701-1435", summing to 6542 cents
+    """
+    # Arrange
+    parser = ReceiptParser()
+
+    # Act
+    html = parser.extract_html(picnic_receipt_original_raw)
+    parsed = parser.parse(html)
+
+    # Assert
+    assert len(parsed.items) == 33
+    assert {item.order_number for item in parsed.items} == {"209-521-1175", "204-701-1435"}
+    assert sum(item.line_total_cents for item in parsed.items) == 6542
+
+
 # TC-013-01: Parser assigns each item its order number
 def test_parse_assigns_order_numbers(picnic_receipt_current_html):
     """

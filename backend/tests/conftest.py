@@ -104,6 +104,18 @@ def picnic_receipt_current_html() -> str:
 
 
 @pytest.fixture
+def picnic_receipt_original_raw() -> str:
+    """Raw MIME text of a real Picnic "Dein Bon" email (anonymized).
+
+    A full, unmodified message as fetched from IMAP (headers + multipart
+    body), used as an end-to-end regression against the actual production
+    invoice format. Recipient name, address, email and tracking tokens have
+    been replaced with fictitious placeholders; the item rows are untouched.
+    """
+    return (FIXTURES_DIR / "picnic_receipt_original.html").read_text(encoding="utf-8")
+
+
+@pytest.fixture
 def picnic_receipt_forwarded_html() -> str:
     """HTML of a "Dein Bon" invoice excerpt with <tbody>-wrapped table rows,
     as produced by Gmail when forwarding the original email."""

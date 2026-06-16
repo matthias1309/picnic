@@ -62,6 +62,28 @@ must continue to pass unchanged after the `parse()` change.
 
 ---
 
+### TC-012-04 — End-to-end regression on a real production invoice email
+
+**Maps to:** AC-012-01 (also exercises REQ-013 order grouping)
+**Type:** unit
+**File:** `backend/tests/test_parser.py`
+
+```gherkin
+Given the raw MIME of a real Picnic "Dein Bon" email, anonymized
+  (fixture: picnic_receipt_original.html)
+When ReceiptParser.extract_html() then parse() are called
+Then all 33 line items are extracted
+And the items are grouped under the two order numbers
+  "209-521-1175" and "204-701-1435"
+And the summed line totals equal 6542 cents
+```
+
+**Notes:** this is the exact email that previously failed to parse in
+production. It locks in the current-template behavior against a real-world
+sample, not a hand-built excerpt.
+
+---
+
 ## Test Fixtures & Mocks
 
 **New fixture (`backend/tests/fixtures/picnic_receipt_current.html`):**
@@ -76,9 +98,16 @@ An anonymized excerpt reproducing Picnic's current template:
 - A `Pfand` summary row with the same border style but **no product image**.
 - `Gesamtbetrag` 7,37€.
 
-**New fixture (`conftest.py`):**
+**New fixture (`backend/tests/fixtures/picnic_receipt_original.html`):**
 
-- `picnic_receipt_current_html`: loads the file as a string.
+A full raw MIME "Dein Bon" email straight from IMAP, anonymized (recipient
+name, delivery address, email addresses and bounce/X-MSFBL tracking tokens
+replaced; item rows untouched). 33 items across two `Bestellnr` sections.
+
+**New fixtures (`conftest.py`):**
+
+- `picnic_receipt_current_html`: loads the current-format excerpt as a string.
+- `picnic_receipt_original_raw`: loads the raw anonymized email as a string.
 
 ---
 
