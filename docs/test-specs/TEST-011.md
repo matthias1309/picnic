@@ -1,6 +1,6 @@
 # TEST-011 — Configure Monthly Budget Tests
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-15
 **Traces:** ARCH-011
 **Verifies:** REQ-011 (AC-011-01, AC-011-02, AC-011-03, AC-011-04, AC-011-05, AC-011-06)

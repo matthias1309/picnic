@@ -1,6 +1,6 @@
 # TEST-007 — Login Rate Limiting Tests
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** ARCH-007
 **Verifies:** REQ-007 (AC-007-01, AC-007-02, AC-007-03, AC-007-04)

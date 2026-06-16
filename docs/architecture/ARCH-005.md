@@ -1,6 +1,6 @@
 # ARCH-005 — React Dashboard
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** REQ-005
 **Verified by:** TEST-005

@@ -1,6 +1,6 @@
 # TEST-001 — IMAP Email Polling and Receipt Storage Tests
 
-**Status:** draft  
+**Status:** approved  
 **Created:** 2026-06-12  
 **Traces:** ARCH-001  
 **Verifies:** REQ-001 (AC-001-01, AC-001-02, AC-001-03, AC-001-04)

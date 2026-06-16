@@ -1,6 +1,6 @@
 # TEST-014 — Parse the Delivery Date from the Invoice HTML
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-16
 **Traces:** ARCH-014
 **Verifies:** REQ-014 (AC-014-01, AC-014-02, AC-014-03, AC-014-04, AC-014-05, AC-014-06)

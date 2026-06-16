@@ -1,6 +1,6 @@
 # ARCH-010 — Filter Ingested Emails by Subject
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-15
 **Traces:** REQ-010
 **Verified by:** TEST-010

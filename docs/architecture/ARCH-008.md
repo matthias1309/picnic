@@ -1,6 +1,6 @@
 # ARCH-008 — Fix Price Extraction for Forwarded Invoice Emails
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** REQ-008
 **Verified by:** TEST-008

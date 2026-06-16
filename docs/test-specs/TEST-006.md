@@ -1,6 +1,6 @@
 # TEST-006 — User Login & Authentication Tests
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** ARCH-006
 **Verifies:** REQ-006 (AC-006-01, AC-006-02, AC-006-03, AC-006-04, AC-006-05, AC-006-06)

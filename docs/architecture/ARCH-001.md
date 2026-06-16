@@ -1,6 +1,6 @@
 # ARCH-001 — IMAP Email Polling and Receipt Storage Architecture
 
-**Status:** draft  
+**Status:** approved  
 **Created:** 2026-06-12  
 **Traces:** REQ-001  
 **Verified by:** TEST-001

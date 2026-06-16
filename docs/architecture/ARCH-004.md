@@ -1,6 +1,6 @@
 # ARCH-004 — Statistics and Spending Insights
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** REQ-004
 **Verified by:** TEST-004
