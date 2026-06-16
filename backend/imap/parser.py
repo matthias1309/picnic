@@ -7,6 +7,7 @@ total from the HTML invoice table embedded in the raw MIME email.
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from email import message_from_string
 
 from bs4 import BeautifulSoup
@@ -34,6 +35,7 @@ class ParsedReceipt:
 
     items: list[ParsedItem]
     stated_total_cents: int | None
+    delivery_date: date | None = None
 
 
 # Style fragments used by Picnic's invoice template to mark structural elements.
@@ -44,6 +46,29 @@ _TOTAL_LABEL = "Gesamtbetrag"
 
 # Order section header, e.g. "Bestellnr 209-521-1175".
 _ORDER_NUMBER_RE = re.compile(r"Bestellnr\s+(\d{3}-\d{3}-\d{4})")
+
+# German month names as they appear in the invoice body.
+_GERMAN_MONTHS = {
+    "januar": 1,
+    "februar": 2,
+    "märz": 3,
+    "april": 4,
+    "mai": 5,
+    "juni": 6,
+    "juli": 7,
+    "august": 8,
+    "september": 9,
+    "oktober": 10,
+    "november": 11,
+    "dezember": 12,
+}
+
+# Delivery sentence, e.g. "Lieferung von Montag 15 Juni 2026". The weekday only
+# anchors the match and is discarded; the day may carry a trailing period.
+_DELIVERY_DATE_RE = re.compile(
+    r"Lieferung von\s+\w+\s+(\d{1,2})\.?\s+([A-Za-zÄÖÜäöüß]+)\s+(\d{4})",
+    re.IGNORECASE,
+)
 
 
 def _normalize_style(style: str | None) -> str:
@@ -99,8 +124,36 @@ class ReceiptParser:
 
         items = [self._parse_item_row(row) for row in rows]
         stated_total_cents = self._extract_stated_total(soup)
+        delivery_date = self._extract_delivery_date(soup)
 
-        return ParsedReceipt(items=items, stated_total_cents=stated_total_cents)
+        return ParsedReceipt(
+            items=items,
+            stated_total_cents=stated_total_cents,
+            delivery_date=delivery_date,
+        )
+
+    def _extract_delivery_date(self, soup: BeautifulSoup) -> date | None:
+        """Best-effort extraction of the delivery date from the invoice body.
+
+        Picnic states the delivery in a sentence such as "… Lieferung von
+        Montag 15 Juni 2026". Returns None when the sentence is absent or its
+        month name is unknown, so the caller falls back to the email date
+        instead of failing the whole parse.
+        """
+        text = soup.get_text(" ", strip=True)
+        match = _DELIVERY_DATE_RE.search(text)
+        if match is None:
+            return None
+
+        day, month_name, year = match.groups()
+        month = _GERMAN_MONTHS.get(month_name.lower())
+        if month is None:
+            return None
+
+        try:
+            return date(int(year), month, int(day))
+        except ValueError:
+            return None
 
     def _parse_item_row(self, row: Tag) -> ParsedItem:
         image = row.select_one("img[alt]")

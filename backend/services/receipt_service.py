@@ -48,6 +48,7 @@ def parse_pending_receipts(db: Session, parser: ReceiptParser | None = None) -> 
             failed_count += 1
             continue
 
+        receipt.delivery_date = parsed_receipt.delivery_date
         _store_parsed_receipt(db, receipt, parsed_receipt)
         _reconcile_total(receipt, parsed_receipt)
 
@@ -83,7 +84,7 @@ def _store_parsed_receipt(db: Session, receipt: Receipt, parsed_receipt: ParsedR
                 receipt_id=receipt.id,
                 unit_price_cents=item.unit_price_cents,
                 quantity=item.quantity,
-                recorded_date=receipt.received_date,
+                recorded_date=receipt.effective_date,
             )
         )
 
@@ -121,14 +122,14 @@ def list_receipts(
     """Return a page of receipts (newest first) and the total matching count."""
     query = db.query(Receipt)
     if from_date is not None:
-        query = query.filter(func.date(Receipt.received_date) >= from_date)
+        query = query.filter(func.date(Receipt.effective_date) >= from_date)
     if to_date is not None:
-        query = query.filter(func.date(Receipt.received_date) <= to_date)
+        query = query.filter(func.date(Receipt.effective_date) <= to_date)
 
     total = query.count()
     receipts = (
         query.options(selectinload(Receipt.items))
-        .order_by(Receipt.received_date.desc())
+        .order_by(Receipt.effective_date.desc())
         .limit(limit)
         .offset(offset)
         .all()

@@ -5,6 +5,8 @@ Traces: ARCH-002
 Verifies: REQ-002 (AC-002-01, AC-002-05, AC-002-06)
 """
 
+from datetime import date
+
 import pytest
 
 from backend.imap.parser import ParseError, ReceiptParser
@@ -192,6 +194,100 @@ def test_parse_single_order_number(picnic_receipt_html):
     # Assert
     assert parsed.items
     assert all(item.order_number == "102-651-1311" for item in parsed.items)
+
+
+# TC-014-01: Parser extracts the delivery date from the invoice body
+def test_parse_extracts_delivery_date(picnic_receipt_current_html):
+    """
+    Given an invoice whose body states "Lieferung von Freitag 15 Mai 2026"
+    (fixture: picnic_receipt_current.html)
+    When ReceiptParser.parse() is called
+    Then ParsedReceipt.delivery_date == date(2026, 5, 15)
+    """
+    # Arrange
+    parser = ReceiptParser()
+
+    # Act
+    parsed = parser.parse(picnic_receipt_current_html)
+
+    # Assert
+    assert parsed.delivery_date == date(2026, 5, 15)
+
+
+# TC-014-02: All German month names are recognised
+@pytest.mark.parametrize(
+    "month_name, expected_month",
+    [
+        ("Januar", 1),
+        ("Februar", 2),
+        ("März", 3),
+        ("April", 4),
+        ("Mai", 5),
+        ("Juni", 6),
+        ("Juli", 7),
+        ("August", 8),
+        ("September", 9),
+        ("Oktober", 10),
+        ("November", 11),
+        ("Dezember", 12),
+    ],
+)
+def test_parse_recognises_all_german_month_names(
+    picnic_receipt_current_html, month_name, expected_month
+):
+    """
+    Given the delivery sentence rendered with each German month name
+    When ReceiptParser.parse() is called
+    Then delivery_date.month equals the corresponding 1..12 value
+    """
+    # Arrange
+    html = picnic_receipt_current_html.replace("15 Mai 2026", f"15 {month_name} 2026")
+    parser = ReceiptParser()
+
+    # Act
+    parsed = parser.parse(html)
+
+    # Assert
+    assert parsed.delivery_date == date(2026, expected_month, 15)
+
+
+# TC-014-03: Missing delivery date yields None without affecting other parsing
+def test_parse_without_delivery_sentence_yields_none(picnic_receipt_html):
+    """
+    Given an invoice with no "Lieferung von ..." sentence (fixture: picnic_receipt.html)
+    When ReceiptParser.parse() is called
+    Then delivery_date is None
+    And the items and stated total are still extracted (no regression)
+    """
+    # Arrange
+    parser = ReceiptParser()
+
+    # Act
+    parsed = parser.parse(picnic_receipt_html)
+
+    # Assert
+    assert parsed.delivery_date is None
+    assert len(parsed.items) == 5
+    assert parsed.stated_total_cents == 1320
+
+
+# TC-014-01 (real data): the delivery date is parsed from a real production email
+def test_parse_original_email_extracts_delivery_date(picnic_receipt_original_raw):
+    """
+    Given the raw MIME of a real, anonymized Picnic email whose body states
+    "deiner Lieferung von Montag 15 Juni 2026"
+    When ReceiptParser.extract_html() then parse() are called
+    Then delivery_date == date(2026, 6, 15)
+    """
+    # Arrange
+    parser = ReceiptParser()
+
+    # Act
+    html = parser.extract_html(picnic_receipt_original_raw)
+    parsed = parser.parse(html)
+
+    # Assert
+    assert parsed.delivery_date == date(2026, 6, 15)
 
 
 # TC-002-05: parse() raises ParseError on malformed invoice HTML

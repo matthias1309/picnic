@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session
 
 from backend.models import PriceHistory, Product, Receipt, ReceiptItem
 
-WEEK_PERIOD_EXPR = func.date(Receipt.received_date, "weekday 0", "-6 days")
-MONTH_PERIOD_EXPR = func.strftime("%Y-%m", Receipt.received_date)
+WEEK_PERIOD_EXPR = func.date(Receipt.effective_date, "weekday 0", "-6 days")
+MONTH_PERIOD_EXPR = func.strftime("%Y-%m", Receipt.effective_date)
 
 
 @dataclass
@@ -40,9 +40,9 @@ def get_spending_over_time(
         ReceiptItem, ReceiptItem.receipt_id == Receipt.id
     )
     if from_date is not None:
-        query = query.filter(func.date(Receipt.received_date) >= from_date)
+        query = query.filter(func.date(Receipt.effective_date) >= from_date)
     if to_date is not None:
-        query = query.filter(func.date(Receipt.received_date) <= to_date)
+        query = query.filter(func.date(Receipt.effective_date) <= to_date)
 
     return query.group_by("period").order_by("period").all()
 
@@ -96,7 +96,7 @@ def get_spent_for_month(db: Session, month: str) -> int:
     spent = (
         db.query(func.coalesce(func.sum(ReceiptItem.line_total_cents), 0))
         .join(Receipt, ReceiptItem.receipt_id == Receipt.id)
-        .filter(func.strftime("%Y-%m", Receipt.received_date) == month)
+        .filter(func.strftime("%Y-%m", Receipt.effective_date) == month)
         .scalar()
     )
     return spent
