@@ -6,7 +6,7 @@ Verifies: REQ-002 (AC-002-01, AC-002-02, AC-002-03, AC-002-04, AC-002-05, AC-002
 """
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 from backend.config import settings
 from backend.models import BudgetSetting, PriceHistory, Product, Receipt, ReceiptItem
@@ -91,6 +91,64 @@ def test_parse_pending_receipts_persists_order_numbers(
     assert order_by_name["Testprodukt Eins"] == "209-521-1175"
     assert order_by_name["Testprodukt Zwei"] == "209-521-1175"
     assert order_by_name["Testprodukt Drei"] == "204-701-1435"
+
+
+# TC-014-04: The parsed delivery date dates the receipt and its price history
+def test_parse_pending_receipts_dates_by_delivery_date(
+    db_session, make_raw_email, picnic_receipt_current_html
+):
+    """
+    Given a pending receipt whose email Date header is 2026-06-01 and whose body
+    states a delivery of "Freitag 15 Mai 2026"
+    When parse_pending_receipts(db) runs
+    Then Receipt.delivery_date == date(2026, 5, 15)
+    And every PriceHistory.recorded_date for that receipt is 2026-05-15
+    """
+    # Arrange
+    receipt = _make_pending_receipt(
+        "bon-delivery@picnic.app", make_raw_email(picnic_receipt_current_html)
+    )
+    db_session.add(receipt)
+    db_session.commit()
+
+    # Act
+    parse_pending_receipts(db_session)
+
+    # Assert
+    db_session.refresh(receipt)
+    assert receipt.delivery_date == date(2026, 5, 15)
+
+    price_history = db_session.query(PriceHistory).filter_by(receipt_id=receipt.id).all()
+    assert price_history
+    assert all(entry.recorded_date.date() == date(2026, 5, 15) for entry in price_history)
+
+
+# TC-014-05: Without a delivery sentence, the email date is used as fallback
+def test_parse_pending_receipts_falls_back_to_email_date(
+    db_session, make_raw_email, picnic_receipt_html
+):
+    """
+    Given a pending receipt whose body has no delivery sentence and whose email
+    Date header is 2026-06-01
+    When parse_pending_receipts(db) runs
+    Then Receipt.delivery_date is None
+    And every PriceHistory.recorded_date falls back to the received_date
+    """
+    # Arrange
+    receipt = _make_pending_receipt("bon-fallback@picnic.app", make_raw_email(picnic_receipt_html))
+    db_session.add(receipt)
+    db_session.commit()
+
+    # Act
+    parse_pending_receipts(db_session)
+
+    # Assert
+    db_session.refresh(receipt)
+    assert receipt.delivery_date is None
+
+    price_history = db_session.query(PriceHistory).filter_by(receipt_id=receipt.id).all()
+    assert price_history
+    assert all(entry.recorded_date == RECEIVED_DATE for entry in price_history)
 
 
 # TC-002-08: Existing products are reused by exact name

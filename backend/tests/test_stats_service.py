@@ -61,6 +61,27 @@ def test_spending_grouped_by_week_uses_iso_monday_boundary(db_session):
     assert dict(buckets)["2026-01-05"] == 200
 
 
+# TC-014-06: A re-delivered receipt is counted in its delivery month
+def test_spent_for_month_uses_delivery_date_over_email_date(db_session):
+    """
+    Given a receipt re-delivered by email on 2026-06-16 whose delivery_date is
+        2026-05-15, with a single 500-cent item
+    When get_spent_for_month is called for "2026-05" and "2026-06"
+    Then the spend is counted in "2026-05" (the delivery month), not "2026-06"
+    """
+    # Arrange
+    product = Product(name="Milch")
+    receipt = _make_receipt("redelivered@picnic.app", datetime(2026, 6, 16, 10, 0))
+    receipt.delivery_date = date(2026, 5, 15)
+    db_session.add_all([product, receipt])
+    db_session.add(_make_item(receipt, product, quantity=1, unit_price_cents=500))
+    db_session.commit()
+
+    # Act & Assert
+    assert stats_service.get_spent_for_month(db_session, "2026-05") == 500
+    assert stats_service.get_spent_for_month(db_session, "2026-06") == 0
+
+
 # TC-004-10: Summary returns headline figures
 def test_summary_returns_headline_figures(db_session):
     """

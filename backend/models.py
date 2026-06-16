@@ -14,12 +14,14 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Date,
     DateTime,
     Boolean,
     Index,
     func,
 )
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -34,6 +36,7 @@ class Receipt(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     message_id = Column(String(255), unique=True, nullable=False, index=True)
     received_date = Column(DateTime, nullable=False)
+    delivery_date = Column(Date, nullable=True)
     from_address = Column(String(255), nullable=False)
     raw_email_text = Column(Text, nullable=False)
     created_at = Column(
@@ -45,6 +48,18 @@ class Receipt(Base):
 
     # Additional indexes for common queries
     __table_args__ = (Index("idx_created_at", "created_at"),)
+
+    @hybrid_property
+    def effective_date(self) -> datetime:
+        """The date the receipt is filed under: the delivery date when parsed
+        from the invoice, otherwise the email's delivery timestamp."""
+        if self.delivery_date is not None:
+            return datetime.combine(self.delivery_date, datetime.min.time())
+        return self.received_date
+
+    @effective_date.expression
+    def effective_date(cls):  # noqa: N805 - SQLAlchemy expression receives the class
+        return func.coalesce(cls.delivery_date, cls.received_date)
 
     def __repr__(self):
         return (
