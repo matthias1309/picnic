@@ -82,6 +82,7 @@ class ReceiptItem(Base):
     quantity = Column(Integer, nullable=False)
     unit_price_cents = Column(Integer, nullable=False)
     line_total_cents = Column(Integer, nullable=False)
+    order_number = Column(String(32), nullable=True, index=True)
 
     receipt = relationship("Receipt", back_populates="items")
     product = relationship("Product", back_populates="receipt_items")

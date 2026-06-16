@@ -49,6 +49,7 @@ class ReceiptItemOut(BaseModel):
     quantity: int
     unit_price_cents: int
     line_total_cents: int
+    order_number: str | None = None
 
 
 class ReceiptDetail(BaseModel):

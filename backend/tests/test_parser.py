@@ -90,6 +90,88 @@ def test_parse_handles_free_gratis_item(picnic_receipt_html):
     assert free_item.line_total_cents == 0
 
 
+# TC-012-01: Parse line items in the current invoice format
+def test_parse_current_format_extracts_items(picnic_receipt_current_html):
+    """
+    Given an invoice whose item rows use "border-bottom: 1px solid #EBEBEB"
+    (space after the colon, uppercase hex; fixture: picnic_receipt_current.html)
+    When ReceiptParser.parse() is called
+    Then 3 items are returned with the expected quantities and totals
+    """
+    # Arrange
+    parser = ReceiptParser()
+
+    # Act
+    parsed = parser.parse(picnic_receipt_current_html)
+
+    # Assert
+    assert len(parsed.items) == 3
+
+    eins = next(item for item in parsed.items if item.name == "Testprodukt Eins")
+    assert eins.quantity == 1
+    assert eins.line_total_cents == 250
+
+    zwei = next(item for item in parsed.items if item.name == "Testprodukt Zwei")
+    assert zwei.quantity == 2
+    assert zwei.line_total_cents == 358
+
+
+# TC-012-02: Non-product summary rows are ignored
+def test_parse_current_format_ignores_summary_rows(picnic_receipt_current_html):
+    """
+    Given an invoice whose Pfand summary row carries the item-row border style
+    but has no product image (fixture: picnic_receipt_current.html)
+    When ReceiptParser.parse() is called
+    Then no parsed item is derived from that summary row and parse() does not raise
+    """
+    # Arrange
+    parser = ReceiptParser()
+
+    # Act
+    parsed = parser.parse(picnic_receipt_current_html)
+
+    # Assert
+    assert all(item.name != "Pfand" for item in parsed.items)
+
+
+# TC-013-01: Parser assigns each item its order number
+def test_parse_assigns_order_numbers(picnic_receipt_current_html):
+    """
+    Given an invoice with two Bestellnr sections (fixture: picnic_receipt_current.html)
+    When ReceiptParser.parse() is called
+    Then each item carries the order_number of the section it appears in
+    """
+    # Arrange
+    parser = ReceiptParser()
+
+    # Act
+    parsed = parser.parse(picnic_receipt_current_html)
+
+    # Assert
+    order_by_name = {item.name: item.order_number for item in parsed.items}
+    assert order_by_name["Testprodukt Eins"] == "209-521-1175"
+    assert order_by_name["Testprodukt Zwei"] == "209-521-1175"
+    assert order_by_name["Testprodukt Drei"] == "204-701-1435"
+
+
+# TC-013-02: Single-order invoice assigns its order number to every item
+def test_parse_single_order_number(picnic_receipt_html):
+    """
+    Given the picnic_receipt.html fixture (single Bestellnr 102-651-1311)
+    When ReceiptParser.parse() is called
+    Then every parsed item has order_number "102-651-1311"
+    """
+    # Arrange
+    parser = ReceiptParser()
+
+    # Act
+    parsed = parser.parse(picnic_receipt_html)
+
+    # Assert
+    assert parsed.items
+    assert all(item.order_number == "102-651-1311" for item in parsed.items)
+
+
 # TC-002-05: parse() raises ParseError on malformed invoice HTML
 def test_parse_raises_on_malformed_html(picnic_receipt_malformed_html):
     """

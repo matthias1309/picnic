@@ -5,6 +5,7 @@ Extracts line items (product name, quantity, prices) and the stated order
 total from the HTML invoice table embedded in the raw MIME email.
 """
 
+import re
 from dataclasses import dataclass
 from email import message_from_string
 
@@ -24,6 +25,7 @@ class ParsedItem:
     quantity: int
     unit_price_cents: int
     line_total_cents: int
+    order_number: str | None = None
 
 
 @dataclass(frozen=True)
@@ -39,6 +41,23 @@ _ITEM_ROW_STYLE = "border-bottom:1px solid #ebebeb"
 _QUANTITY_BADGE_STYLE = "border:1px solid #234314"
 _STRUCK_THROUGH_STYLE = "line-through"
 _TOTAL_LABEL = "Gesamtbetrag"
+
+# Order section header, e.g. "Bestellnr 209-521-1175".
+_ORDER_NUMBER_RE = re.compile(r"Bestellnr\s+(\d{3}-\d{3}-\d{4})")
+
+
+def _normalize_style(style: str | None) -> str:
+    """Lowercase a style attribute and strip spaces for tolerant comparison.
+
+    Picnic's template varies the spelling of declarations across versions
+    (e.g. ``border-bottom:1px solid #ebebeb`` vs.
+    ``border-bottom: 1px solid #EBEBEB``); normalizing absorbs whitespace and
+    case differences so style markers match regardless.
+    """
+    return (style or "").replace(" ", "").lower()
+
+
+_ITEM_ROW_STYLE_NORMALIZED = _normalize_style(_ITEM_ROW_STYLE)
 
 
 class ReceiptParser:
@@ -69,7 +88,12 @@ class ReceiptParser:
         """
         soup = BeautifulSoup(html, "html.parser")
 
-        rows = soup.select(f'td[style*="{_ITEM_ROW_STYLE}"]')
+        rows = [
+            cell
+            for cell in soup.find_all("td")
+            if _ITEM_ROW_STYLE_NORMALIZED in _normalize_style(cell.get("style"))
+            and cell.select_one("img[alt]") is not None
+        ]
         if not rows:
             raise ParseError("No item rows found in invoice HTML")
 
@@ -106,7 +130,21 @@ class ReceiptParser:
             quantity=quantity,
             unit_price_cents=unit_price_cents,
             line_total_cents=line_total_cents,
+            order_number=self._extract_order_number(row),
         )
+
+    def _extract_order_number(self, row: Tag) -> str | None:
+        """Return the order number of the section this item row belongs to.
+
+        Picnic groups items under "Bestellnr NNN-NNN-NNNN" headers; an item
+        belongs to the nearest such header that precedes it. Items that appear
+        before any header (or in emails without order numbers) return None.
+        """
+        for text in row.find_all_previous(string=_ORDER_NUMBER_RE):
+            match = _ORDER_NUMBER_RE.search(text)
+            if match:
+                return match.group(1)
+        return None
 
     def _extract_prices(self, price_table: Tag) -> list[tuple[str, str, bool]]:
         """Extract (euro, cent, is_struck_through) tuples from a price table.

@@ -76,6 +76,7 @@ def get_receipt(receipt_id: int, db: Session = Depends(get_db)) -> ReceiptDetail
             quantity=item.quantity,
             unit_price_cents=item.unit_price_cents,
             line_total_cents=item.line_total_cents,
+            order_number=item.order_number,
         )
         for item in receipt.items
     ]
@@ -195,9 +196,7 @@ def update_budget(
     db: Session = Depends(get_db),
 ) -> BudgetSettingOut:
     """Update the configured monthly budget (AC-011-03, AC-011-05, AC-011-06)."""
-    monthly_budget_cents = budget_service.set_monthly_budget_cents(
-        db, payload.monthly_budget_cents
-    )
+    monthly_budget_cents = budget_service.set_monthly_budget_cents(db, payload.monthly_budget_cents)
     return BudgetSettingOut(monthly_budget_cents=monthly_budget_cents)
 
 
