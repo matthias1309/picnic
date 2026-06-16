@@ -86,6 +86,7 @@ export interface ReceiptItemOut {
   quantity: number;
   unit_price_cents: number;
   line_total_cents: number;
+  order_number: string | null;
 }
 
 export interface ReceiptDetail {

@@ -96,6 +96,14 @@ def picnic_receipt_malformed_html() -> str:
 
 
 @pytest.fixture
+def picnic_receipt_current_html() -> str:
+    """HTML of a "Dein Bon" invoice excerpt in Picnic's current template:
+    item rows styled "border-bottom: 1px solid #EBEBEB" (space + uppercase),
+    grouped under two Bestellnr sections, plus a Pfand summary row."""
+    return (FIXTURES_DIR / "picnic_receipt_current.html").read_text(encoding="utf-8")
+
+
+@pytest.fixture
 def picnic_receipt_forwarded_html() -> str:
     """HTML of a "Dein Bon" invoice excerpt with <tbody>-wrapped table rows,
     as produced by Gmail when forwarding the original email."""

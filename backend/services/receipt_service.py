@@ -74,6 +74,7 @@ def _store_parsed_receipt(db: Session, receipt: Receipt, parsed_receipt: ParsedR
                 quantity=item.quantity,
                 unit_price_cents=item.unit_price_cents,
                 line_total_cents=item.line_total_cents,
+                order_number=item.order_number,
             )
         )
         db.add(

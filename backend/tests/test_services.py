@@ -64,6 +64,35 @@ def test_parse_pending_receipts_stores_items_products_and_price_history(
     assert all(entry.recorded_date == RECEIVED_DATE for entry in price_history)
 
 
+# TC-013-03: Order numbers parsed from the invoice are persisted on receipt items
+def test_parse_pending_receipts_persists_order_numbers(
+    db_session, make_raw_email, picnic_receipt_current_html
+):
+    """
+    Given a pending receipt in the current invoice format with two Bestellnr sections
+    When parse_pending_receipts(db) is called
+    Then each stored receipt_item carries its parsed order_number
+    """
+    # Arrange
+    receipt = _make_pending_receipt(
+        "bon-orders@picnic.app", make_raw_email(picnic_receipt_current_html)
+    )
+    db_session.add(receipt)
+    db_session.commit()
+
+    # Act
+    parse_pending_receipts(db_session)
+
+    # Assert
+    order_by_name = {
+        item.product.name: item.order_number
+        for item in db_session.query(ReceiptItem).filter_by(receipt_id=receipt.id).all()
+    }
+    assert order_by_name["Testprodukt Eins"] == "209-521-1175"
+    assert order_by_name["Testprodukt Zwei"] == "209-521-1175"
+    assert order_by_name["Testprodukt Drei"] == "204-701-1435"
+
+
 # TC-002-08: Existing products are reused by exact name
 def test_parse_pending_receipts_reuses_existing_product_by_name(
     db_session, make_raw_email, picnic_receipt_html

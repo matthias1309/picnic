@@ -42,8 +42,43 @@ const RECEIPT_DETAIL_FIXTURE: ReceiptDetail = {
   received_date: "2026-06-10T12:00:00Z",
   from_address: "picnic@picnic.de",
   items: [
-    { product_name: "Bananas", quantity: 2, unit_price_cents: 99, line_total_cents: 198 },
-    { product_name: "Milk", quantity: 1, unit_price_cents: 109, line_total_cents: 109 },
+    {
+      product_name: "Bananas",
+      quantity: 2,
+      unit_price_cents: 99,
+      line_total_cents: 198,
+      order_number: null,
+    },
+    {
+      product_name: "Milk",
+      quantity: 1,
+      unit_price_cents: 109,
+      line_total_cents: 109,
+      order_number: null,
+    },
+  ],
+  total_cents: 307,
+};
+
+const GROUPED_RECEIPT_DETAIL_FIXTURE: ReceiptDetail = {
+  id: 4,
+  received_date: "2026-06-14T12:00:00Z",
+  from_address: "picnic@picnic.de",
+  items: [
+    {
+      product_name: "Bananas",
+      quantity: 2,
+      unit_price_cents: 99,
+      line_total_cents: 198,
+      order_number: "209-521-1175",
+    },
+    {
+      product_name: "Milk",
+      quantity: 1,
+      unit_price_cents: 109,
+      line_total_cents: 109,
+      order_number: "204-701-1435",
+    },
   ],
   total_cents: 307,
 };
@@ -111,6 +146,35 @@ describe("Receipts", () => {
     expect(detail).toHaveTextContent("1,98 €");
     expect(detail).toHaveTextContent("Milk");
     expect(detail).toHaveTextContent("3,07 €");
+  });
+
+  // TC-013-05
+  // Given a receipt whose items belong to two order numbers
+  // When the receipt detail is rendered
+  // Then items appear grouped under their order-number headings
+  it("groups receipt items by order number", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
+      if (path === "/receipts/4") return Promise.resolve(GROUPED_RECEIPT_DETAIL_FIXTURE);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    // Act
+    renderWithProviders(
+      <Routes>
+        <Route path="/receipts/:id" element={<Receipts />} />
+      </Routes>,
+      { route: "/receipts/4" },
+    );
+
+    // Assert
+    await screen.findByTestId("receipt-detail");
+    const firstGroup = screen.getByTestId("order-group-209-521-1175");
+    const secondGroup = screen.getByTestId("order-group-204-701-1435");
+    expect(firstGroup).toHaveTextContent("Bestellnr 209-521-1175");
+    expect(firstGroup).toHaveTextContent("Bananas");
+    expect(secondGroup).toHaveTextContent("Bestellnr 204-701-1435");
+    expect(secondGroup).toHaveTextContent("Milk");
   });
 
   // TC-009-05

@@ -23,7 +23,11 @@ def _make_receipt(message_id: str, received_date: datetime) -> Receipt:
 
 
 def _make_item(
-    receipt: Receipt, product: Product, quantity: int, unit_price_cents: int
+    receipt: Receipt,
+    product: Product,
+    quantity: int,
+    unit_price_cents: int,
+    order_number: str | None = None,
 ) -> ReceiptItem:
     return ReceiptItem(
         receipt=receipt,
@@ -31,6 +35,7 @@ def _make_item(
         quantity=quantity,
         unit_price_cents=unit_price_cents,
         line_total_cents=quantity * unit_price_cents,
+        order_number=order_number,
     )
 
 
@@ -109,13 +114,42 @@ def test_get_receipt_returns_items(client, db_session):
         "quantity": 1,
         "unit_price_cents": 250,
         "line_total_cents": 250,
+        "order_number": None,
     }
     assert items[1] == {
         "product_name": "Milch",
         "quantity": 2,
         "unit_price_cents": 100,
         "line_total_cents": 200,
+        "order_number": None,
     }
+
+
+# TC-013-04: Receipt detail exposes the order number per item
+def test_get_receipt_includes_order_number(client, db_session):
+    """
+    Given a receipt whose items carry order numbers
+    When the client requests GET /picnic/api/receipts/{X}
+    Then each returned item includes its order_number
+    """
+    # Arrange
+    receipt = _make_receipt("r-orders@picnic.app", datetime(2026, 6, 1, 10, 0))
+    milk = Product(name="Milch")
+    bread = Product(name="Brot")
+    db_session.add_all([receipt, milk, bread])
+    db_session.add(_make_item(receipt, milk, 2, 100, order_number="209-521-1175"))
+    db_session.add(_make_item(receipt, bread, 1, 250, order_number="204-701-1435"))
+    db_session.commit()
+
+    # Act
+    response = client.get(f"{BASE}/receipts/{receipt.id}")
+
+    # Assert
+    assert response.status_code == 200
+    order_by_name = {
+        item["product_name"]: item["order_number"] for item in response.json()["items"]
+    }
+    assert order_by_name == {"Milch": "209-521-1175", "Brot": "204-701-1435"}
 
 
 # TC-003-03: Get a single receipt returns 404 when not found
