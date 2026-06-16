@@ -1,6 +1,6 @@
 # ARCH-003 — REST API for Receipt and Product Data
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** REQ-003
 **Verified by:** TEST-003

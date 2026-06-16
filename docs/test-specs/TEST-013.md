@@ -1,6 +1,6 @@
 # TEST-013 — Group Receipt Line Items by Picnic Order Number
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-16
 **Traces:** ARCH-013
 **Verifies:** REQ-013 (AC-013-01, AC-013-02, AC-013-03, AC-013-04, AC-013-05)

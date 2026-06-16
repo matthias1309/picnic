@@ -1,6 +1,6 @@
 # TEST-004 — Statistics and Spending Insights Tests
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** ARCH-004
 **Verifies:** REQ-004 (AC-004-01, AC-004-02, AC-004-03, AC-004-04, AC-004-05, AC-004-06)

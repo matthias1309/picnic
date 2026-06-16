@@ -1,6 +1,6 @@
 # ARCH-012 — Robust Item-Row Detection for the Current Picnic Invoice Format
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-16
 **Traces:** REQ-012
 **Verified by:** TEST-012

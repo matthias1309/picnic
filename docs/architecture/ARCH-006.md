@@ -1,6 +1,6 @@
 # ARCH-006 — User Login & Authentication
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** REQ-006
 **Verified by:** TEST-006

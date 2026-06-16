@@ -1,6 +1,6 @@
 # ARCH-002 — HTML Email Parsing and Structured Receipt Storage
 
-**Status:** draft  
+**Status:** approved  
 **Created:** 2026-06-13  
 **Traces:** REQ-002  
 **Verified by:** TEST-002

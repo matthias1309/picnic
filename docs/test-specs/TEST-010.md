@@ -1,6 +1,6 @@
 # TEST-010 — Filter Ingested Emails by Subject Tests
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-15
 **Traces:** ARCH-010
 **Verifies:** REQ-010 (AC-010-01, AC-010-02, AC-010-03, AC-010-04)

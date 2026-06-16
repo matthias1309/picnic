@@ -1,6 +1,6 @@
 # TEST-012 — Robust Item-Row Detection for the Current Picnic Invoice Format
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-16
 **Traces:** ARCH-012
 **Verifies:** REQ-012 (AC-012-01, AC-012-02, AC-012-03)

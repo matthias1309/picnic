@@ -1,6 +1,6 @@
 # ARCH-007 — Login Rate Limiting
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** REQ-007
 **Verified by:** TEST-007

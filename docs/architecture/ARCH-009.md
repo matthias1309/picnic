@@ -1,6 +1,6 @@
 # ARCH-009 — Delete a Receipt
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-15
 **Traces:** REQ-009
 **Verified by:** TEST-009

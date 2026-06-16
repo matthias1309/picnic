@@ -1,6 +1,6 @@
 # TEST-003 — REST API for Receipt and Product Data Tests
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** ARCH-003
 **Verifies:** REQ-003 (AC-003-01, AC-003-02, AC-003-03, AC-003-04, AC-003-05, AC-003-06)

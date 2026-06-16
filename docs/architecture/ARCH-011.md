@@ -1,6 +1,6 @@
 # ARCH-011 — Configure Monthly Budget
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-15
 **Traces:** REQ-011
 **Verified by:** TEST-011

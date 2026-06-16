@@ -1,6 +1,6 @@
 # TEST-009 — Delete a Receipt Tests
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-15
 **Traces:** ARCH-009
 **Verifies:** REQ-009 (AC-009-01, AC-009-02, AC-009-03, AC-009-04, AC-009-05)

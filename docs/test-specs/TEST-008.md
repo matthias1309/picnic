@@ -1,6 +1,6 @@
 # TEST-008 — Fix Price Extraction for Forwarded Invoice Emails
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-06-14
 **Traces:** ARCH-008
 **Verifies:** REQ-008 (AC-008-01, AC-008-02)

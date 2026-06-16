@@ -1,6 +1,6 @@
 # TEST-002 — HTML Email Parsing and Structured Receipt Storage Tests
 
-**Status:** draft  
+**Status:** approved  
 **Created:** 2026-06-13  
 **Traces:** ARCH-002  
 **Verifies:** REQ-002 (AC-002-01, AC-002-02, AC-002-03, AC-002-04, AC-002-05, AC-002-06)
