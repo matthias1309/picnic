@@ -1,0 +1,25 @@
+# Backend Development & CI Dependencies — Picnic Expense Tracker
+#
+# Installs everything from requirements.txt plus tooling that must NEVER
+# reach the production environment (tests, linters, type-checker, dead-code).
+# Local & CI install: pip install -r requirements-dev.txt
+# Production deploy installs requirements.txt only.
+
+-r requirements.txt
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx==0.25.2
+
+# Linting & Type-checking
+ruff==0.1.8
+mypy==1.7.1
+types-requests==2.31.0.10
+
+# Dead-code detection
+vulture==2.11
+
+# Development
+ipython==8.17.2

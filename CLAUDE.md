@@ -86,8 +86,11 @@ If a convention is unclear, ask before proceeding.
 **Backend (Python):**
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (development & CI — includes tests, linters, dead-code)
+pip install -r requirements-dev.txt
+
+# Production installs runtime deps only (see scripts/deploy.sh):
+#   pip install -r requirements.txt
 
 # Run development server (with hot-reload)
 python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
@@ -108,6 +111,9 @@ ruff format backend/
 
 # Type-check (if added)
 mypy backend/ --ignore-missing-imports
+
+# Dead-code scan (advisory; config in pyproject.toml [tool.vulture])
+vulture
 ```
 
 **Frontend (React + TypeScript):**
@@ -136,6 +142,9 @@ npm run lint
 
 # Lint with auto-fix
 npm run lint:fix
+
+# Dead-code scan (advisory; unused files, exports, dependencies)
+npm run deadcode
 ```
 
 **Always run tests and linting before considering a task complete.**

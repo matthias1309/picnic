@@ -1,4 +1,8 @@
-# Backend Dependencies — Picnic Expense Tracker
+# Backend Runtime Dependencies — Picnic Expense Tracker
+#
+# This file contains ONLY production runtime dependencies.
+# Production deploy (scripts/deploy.sh) installs exactly this file.
+# Development & CI tooling lives in requirements-dev.txt.
 
 # Web Framework
 fastapi==0.104.1
@@ -23,17 +27,3 @@ python-dotenv==1.0.0
 # Validation & Serialization
 pydantic==2.5.0
 pydantic-settings==2.1.0
-
-# Testing
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
-httpx==0.25.2
-
-# Linting & Type-checking
-ruff==0.1.8
-mypy==1.7.1
-types-requests==2.31.0.10
-
-# Development
-ipython==8.17.2
