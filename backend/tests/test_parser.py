@@ -69,7 +69,7 @@ def test_parse_extracts_line_items(picnic_receipt_html):
     assert pistazien.unit_price_cents == 454
 
 
-# TC-002-04, TC-008-03: Free ("gratis") items are parsed with zero price (regression: non-wrapped HTML)
+# TC-002-04, TC-008-03: Free ("gratis") items are parsed with zero price (regression)
 def test_parse_handles_free_gratis_item(picnic_receipt_html):
     """
     Given an invoice item that is part of a "2+1 gratis" promotion and shows no price
@@ -306,7 +306,7 @@ def test_parse_raises_on_malformed_html(picnic_receipt_malformed_html):
         parser.parse(picnic_receipt_malformed_html)
 
 
-# TC-002-06, TC-008-03: Extract the stated order total ("Gesamtbetrag") (regression: non-wrapped HTML)
+# TC-002-06, TC-008-03: Extract the stated order total ("Gesamtbetrag") (regression)
 def test_parse_extracts_stated_total(picnic_receipt_html):
     """
     Given the HTML of a Picnic invoice containing a "Gesamtbetrag" total of 13,20€
