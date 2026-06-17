@@ -10,11 +10,17 @@
 
 set -e  # Exit on error
 
-# Resolve the ref to deploy (DEPLOY_REF, default main). Sourced from a separate
-# file so the logic stays unit-testable without SSH (REQ-015).
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=scripts/deploy_lib.sh
-source "${SCRIPT_DIR}/deploy_lib.sh"
+# Resolve the ref to deploy (DEPLOY_REF, default main). The logic lives in a
+# separate file so it stays unit-testable without SSH (REQ-015). CI pipes
+# deploy_lib.sh ahead of this script over the same SSH stdin stream (so
+# resolve_deploy_ref is already defined before this line runs); a manual
+# invocation from a checked-out repo has no such stream, so fall back to
+# sourcing the file from disk next to this script.
+if ! declare -F resolve_deploy_ref > /dev/null; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # shellcheck source=scripts/deploy_lib.sh
+    source "${SCRIPT_DIR}/deploy_lib.sh"
+fi
 DEPLOY_REF="$(resolve_deploy_ref)"
 
 PICNIC_ROOT="${HOME}/picnic"
