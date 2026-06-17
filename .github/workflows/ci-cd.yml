@@ -139,9 +139,10 @@ jobs:
 
       - name: Deploy candidate to Dev Uberspace
         run: |
-          ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.UBERSPACE_SSH_PORT }} \
+          cat scripts/deploy_lib.sh scripts/deploy.sh | \
+            ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.UBERSPACE_SSH_PORT }} \
             ${{ secrets.UBERSPACE_USER }}@${{ secrets.UBERSPACE_HOST }} \
-            "DEPLOY_REF=main PUBLIC_BASE_URL=https://mattdev.uber.space/picnic bash -s" < scripts/deploy.sh
+            "DEPLOY_REF=main PUBLIC_BASE_URL=https://mattdev.uber.space/picnic bash -s"
           echo "✓ Dev deployment successful"
 
   # ============================================================
@@ -198,9 +199,10 @@ jobs:
 
       - name: Deploy main to Production Uberspace
         run: |
-          ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.UBERSPACE_SSH_PORT }} \
+          cat scripts/deploy_lib.sh scripts/deploy.sh | \
+            ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.UBERSPACE_SSH_PORT }} \
             ${{ secrets.UBERSPACE_USER }}@${{ secrets.UBERSPACE_HOST }} \
-            "DEPLOY_REF=main PUBLIC_BASE_URL=https://matt-maxx.de/picnic bash -s" < scripts/deploy.sh
+            "DEPLOY_REF=main PUBLIC_BASE_URL=https://matt-maxx.de/picnic bash -s"
           echo "✓ Production deployment successful"
 
       - name: Verify deployment
