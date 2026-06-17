@@ -9,7 +9,7 @@
 
 ## Test Cases
 
-### TC-015-01 — Dev deploy job is bound to develop and the development environment
+### TC-015-01 — Dev deploy job is bound to main and the development environment
 
 **Maps to:** AC-015-01
 **Type:** unit (workflow structure)
@@ -19,7 +19,7 @@
 Given the parsed .github/workflows/ci-cd.yml
 When the deploy-dev job is inspected
 Then its environment name is "development"
-And its `if` condition requires github.ref == 'refs/heads/develop'
+And its `if` condition requires github.ref == 'refs/heads/main'
 And it needs both backend-test and frontend-test
 ```
 
