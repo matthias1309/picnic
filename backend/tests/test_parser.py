@@ -46,7 +46,7 @@ def test_extract_html_raises_when_no_html_part(make_raw_email):
         parser.extract_html(raw_email)
 
 
-# TC-002-03: Parse line items from an invoice email
+# TC-002-03, TC-008-03: Parse line items from an invoice email (regression: non-wrapped HTML)
 def test_parse_extracts_line_items(picnic_receipt_html):
     """
     Given the HTML of a Picnic invoice (fixture: picnic_receipt.html)
@@ -69,7 +69,7 @@ def test_parse_extracts_line_items(picnic_receipt_html):
     assert pistazien.unit_price_cents == 454
 
 
-# TC-002-04: Free ("gratis") items are parsed with zero price
+# TC-002-04, TC-008-03: Free ("gratis") items are parsed with zero price (regression: non-wrapped HTML)
 def test_parse_handles_free_gratis_item(picnic_receipt_html):
     """
     Given an invoice item that is part of a "2+1 gratis" promotion and shows no price
@@ -136,7 +136,7 @@ def test_parse_current_format_ignores_summary_rows(picnic_receipt_current_html):
     assert all(item.name != "Pfand" for item in parsed.items)
 
 
-# TC-012-04: End-to-end regression on a real production invoice email
+# TC-012-04, TC-012-03: End-to-end regression on a real production invoice email
 def test_parse_original_email_extracts_all_items(picnic_receipt_original_raw):
     """
     Given the raw MIME of a real, anonymized Picnic "Dein Bon" email that
@@ -306,7 +306,7 @@ def test_parse_raises_on_malformed_html(picnic_receipt_malformed_html):
         parser.parse(picnic_receipt_malformed_html)
 
 
-# TC-002-06: Extract the stated order total ("Gesamtbetrag")
+# TC-002-06, TC-008-03: Extract the stated order total ("Gesamtbetrag") (regression: non-wrapped HTML)
 def test_parse_extracts_stated_total(picnic_receipt_html):
     """
     Given the HTML of a Picnic invoice containing a "Gesamtbetrag" total of 13,20€
