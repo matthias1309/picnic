@@ -12,6 +12,8 @@ pytest==7.4.3
 pytest-asyncio==0.21.1
 pytest-cov==4.1.0
 httpx==0.25.2
+# Used by the pipeline-wiring guard test to parse ci-cd.yml (REQ-015).
+PyYAML==6.0.1
 
 # Linting & Type-checking
 ruff==0.1.8

@@ -10,15 +10,27 @@
 
 set -e  # Exit on error
 
+# Resolve the ref to deploy (DEPLOY_REF, default main). Sourced from a separate
+# file so the logic stays unit-testable without SSH (REQ-015).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/deploy_lib.sh
+source "${SCRIPT_DIR}/deploy_lib.sh"
+DEPLOY_REF="$(resolve_deploy_ref)"
+
 PICNIC_ROOT="${HOME}/picnic"
 PICNIC_DB="${HOME}/data/picnic.db"
 PICNIC_LOG="${HOME}/logs/picnic"
 VENV="${PICNIC_ROOT}/venv"
 FRONTEND_BUILD="${PICNIC_ROOT}/frontend/dist"
+# Public URL is for log output only; the health check below uses the internal
+# port, which is identical on both Uberspace hosts.
+PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-https://matt-maxx.de/picnic}"
 
 echo "======================================"
 echo "Picnic Expense Tracker - Deploy Script"
 echo "======================================"
+echo "Ref: $DEPLOY_REF"
+echo "Public URL: $PUBLIC_BASE_URL"
 echo "Root: $PICNIC_ROOT"
 echo "Database: $PICNIC_DB"
 echo "Logs: $PICNIC_LOG"
@@ -36,9 +48,9 @@ mkdir -p "$PICNIC_ROOT" "$HOME/data" "$PICNIC_LOG"
 echo "[2/6] Updating repository..."
 if [ -d "$PICNIC_ROOT/.git" ]; then
     cd "$PICNIC_ROOT"
-    git fetch origin main
-    git reset --hard origin/main
-    echo "✓ Repository updated"
+    git fetch origin "$DEPLOY_REF"
+    git reset --hard "origin/${DEPLOY_REF}"
+    echo "✓ Repository updated to origin/${DEPLOY_REF}"
 else
     git clone https://github.com/matthias1309/picnic.git "$PICNIC_ROOT"
     cd "$PICNIC_ROOT"
@@ -123,12 +135,10 @@ echo ""
 echo "======================================"
 echo "✓ Deployment successful!"
 echo "======================================"
-echo "API URL:       https://matt-maxx.de/picnic"
-echo "Dashboard URL: https://matt-maxx.de/picnic-frontend/"
+echo "API URL:       $PUBLIC_BASE_URL"
 echo "Logs: $PICNIC_LOG"
 echo ""
 echo "Next steps:"
 echo "1. Check logs: tail -f $PICNIC_LOG/picnic.log"
-echo "2. Test: curl https://matt-maxx.de/picnic/health"
-echo "3. Open: https://matt-maxx.de/picnic-frontend/"
+echo "2. Test: curl $PUBLIC_BASE_URL/health"
 echo ""

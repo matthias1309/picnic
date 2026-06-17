@@ -43,12 +43,12 @@ jobs:
 
       - name: Run tests with pytest
         run: |
-          pytest backend/tests/ -v --tb=short
+          pytest backend/tests/ -v --tb=short -m "not acceptance"
           echo "✓ All tests passed"
 
       - name: Test coverage
         run: |
-          pytest backend/tests/ --cov=backend --cov-report=term-missing
+          pytest backend/tests/ --cov=backend --cov-report=term-missing -m "not acceptance"
           echo "✓ Coverage report generated"
 
   # ============================================================
@@ -116,13 +116,83 @@ jobs:
           echo "✓ Build successful"
 
   # ============================================================
-  # Deploy to Uberspace (on main branch push only)
+  # Deploy to the DEV Uberspace (on push to develop)
   # ============================================================
-  deploy:
-    name: Deploy to Uberspace
+  deploy-dev:
+    name: Deploy to Dev Uberspace
     needs: [backend-test, frontend-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment:
+      name: development
+      url: https://mattdev.uber.space/picnic
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.UBERSPACE_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.UBERSPACE_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy develop to Dev Uberspace
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.UBERSPACE_SSH_PORT }} \
+            ${{ secrets.UBERSPACE_USER }}@${{ secrets.UBERSPACE_HOST }} \
+            "DEPLOY_REF=develop PUBLIC_BASE_URL=https://mattdev.uber.space/picnic bash -s" < scripts/deploy.sh
+          echo "✓ Dev deployment successful"
+
+  # ============================================================
+  # Acceptance tests against the running DEV deployment
+  # A red run here blocks promotion to production (REQ-015).
+  # ============================================================
+  acceptance:
+    name: Acceptance Tests (Dev)
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://mattdev.uber.space/picnic
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run acceptance tests against Dev
+        run: |
+          pytest backend/tests/acceptance/ -v -m acceptance
+          echo "✓ Acceptance tests passed against $BASE_URL"
+
+  # ============================================================
+  # Deploy to PRODUCTION (on push to main, manual approval gate)
+  # The `production` environment carries a required-reviewer rule
+  # so this job waits for approval before running (REQ-015).
+  # ============================================================
+  deploy-prod:
+    name: Deploy to Production Uberspace
+    needs: [backend-test, frontend-test, acceptance]
+    runs-on: ubuntu-latest
+    # On a push to main, deploy-dev/acceptance are skipped (they gate the develop
+    # branch); the acceptance gate for main is enforced by branch protection
+    # requiring the develop pipeline to pass before merge (see docs/DEPLOYMENT.md).
+    # `always()` lets this job run despite those skips, while still requiring the
+    # test jobs to have succeeded and acceptance not to have failed.
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.backend-test.result == 'success' &&
+      needs.frontend-test.result == 'success' &&
+      needs.acceptance.result != 'failure'
     environment:
       name: production
       url: https://matt-maxx.de/picnic
@@ -136,10 +206,12 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.UBERSPACE_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to Uberspace
+      - name: Deploy main to Production Uberspace
         run: |
-          ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.UBERSPACE_SSH_PORT }} ${{ secrets.UBERSPACE_USER }}@${{ secrets.UBERSPACE_HOST }} "bash -s" < scripts/deploy.sh
-          echo "✓ Deployment successful"
+          ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.UBERSPACE_SSH_PORT }} \
+            ${{ secrets.UBERSPACE_USER }}@${{ secrets.UBERSPACE_HOST }} \
+            "DEPLOY_REF=main PUBLIC_BASE_URL=https://matt-maxx.de/picnic bash -s" < scripts/deploy.sh
+          echo "✓ Production deployment successful"
 
       - name: Verify deployment
         run: |

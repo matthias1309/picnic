@@ -1,3 +1,11 @@
+[tool.pytest.ini_options]
+# `acceptance` tests hit a live deployment over HTTP (driven by BASE_URL) and are
+# excluded from the default unit run; the CI acceptance stage opts in with
+# `-m acceptance`. See TEST-015.
+markers = [
+    "acceptance: live HTTP tests against a running deployment (requires BASE_URL)",
+]
+
 [tool.ruff]
 line-length = 100
 
