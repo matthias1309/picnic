@@ -27,12 +27,16 @@ git push to main
 
 ## Server Details
 
-| Setting | Value |
-|---|---|
-| Uberspace host | `giclas.uberspace.de` |
-| Uberspace user | `mattmaxx` |
-| App URL | `https://matt-maxx.de/picnic` |
-| SSH port | `22` |
+The pipeline deploys to two Uberspace instances — a development stage that runs
+acceptance tests, and production (see **Staged Deployment Pipeline** below).
+
+| Setting | Production | Development |
+|---|---|---|
+| Uberspace host | `giclas.uberspace.de` | `jarnsaxa.uberspace.de` |
+| Uberspace user | `mattmaxx` | `mattdev` |
+| App URL | `https://matt-maxx.de/picnic` | `https://mattdev.uber.space/picnic` |
+| SSH port | `22` | `22` |
+| Deploys from branch | `main` | `develop` |
 
 **Note:** Your personal SSH key (`~/.ssh/id_ed25519_uberspace`) is for *your* login.
 For GitHub Actions, create a **separate, dedicated deploy key** — this way you can
@@ -73,18 +77,37 @@ Verify the new key works:
 ssh -i ~/.ssh/picnic_deploy_key mattmaxx@giclas.uberspace.de "echo OK"
 ```
 
-### Step 3: Configure GitHub Secrets
+### Step 3: Configure GitHub Environments & Secrets
 
-Go to **GitHub Repository → Settings → Secrets and variables → Actions**
+The pipeline uses two **GitHub Environments** so each stage carries its own host
+secrets under the **same names** (the deploy step is host-agnostic). Go to
+**GitHub Repository → Settings → Environments** and create:
 
-Add these secrets:
+**Environment `development`** (used by the `deploy-dev` job):
 
 | Secret Name | Value |
 |---|---|
-| `UBERSPACE_SSH_KEY` | Contents of `~/.ssh/picnic_deploy_key` (private key, entire file) |
+| `UBERSPACE_SSH_KEY` | Dev deploy private key (`~/.ssh/picnic_dev_deploy_key`) |
+| `UBERSPACE_HOST` | `jarnsaxa.uberspace.de` |
+| `UBERSPACE_USER` | `mattdev` |
+| `UBERSPACE_SSH_PORT` | `22` |
+
+**Environment `production`** (used by the `deploy-prod` job):
+
+| Secret Name | Value |
+|---|---|
+| `UBERSPACE_SSH_KEY` | Prod deploy private key (`~/.ssh/picnic_deploy_key`) |
 | `UBERSPACE_HOST` | `giclas.uberspace.de` |
 | `UBERSPACE_USER` | `mattmaxx` |
 | `UBERSPACE_SSH_PORT` | `22` |
+
+On the **`production`** environment, add a **Required reviewers** protection rule
+(yourself). This is the manual approval gate: after the dev acceptance tests pass,
+the `deploy-prod` job pauses until you approve it (REQ-015, AC-015-04).
+
+> Generate a **separate** deploy key for dev (Steps 1–2, but against
+> `mattdev@jarnsaxa.uberspace.de`) so dev and prod access can be revoked
+> independently.
 
 **⚠️ Important:** Copy the **entire private key file** including `-----BEGIN OPENSSH PRIVATE KEY-----`
 and `-----END OPENSSH PRIVATE KEY-----` lines.
@@ -166,6 +189,20 @@ For the **frontend** (static SPA build), Uberspace serves files directly from
 For MVP, the deploy script focuses on the backend API. Frontend static hosting
 can be wired up once the dashboard (REQ-003) is implemented.
 
+#### Provisioning the Dev Uberspace (one-time)
+
+The development instance (`mattdev@jarnsaxa.uberspace.de`) needs the **same**
+one-time setup as production — repeat Steps 1–2 (a dedicated dev deploy key),
+Step 4 (the `picnic` supervisord service), and Step 5 (`uberspace web backend set
+/picnic --http --port 8000`) while SSH'd into the dev host, and place a dev `.env`
+(its own empty SQLite DB; IMAP credentials optional for a pure smoke-test stage).
+Once provisioned, the `deploy-dev` job deploys the `develop` branch to it
+automatically. Verify with:
+
+```bash
+curl https://mattdev.uber.space/picnic/health   # → {"status": "ok"}
+```
+
 ### Step 6: Test Deployment
 
 Push to main and watch GitHub Actions:
@@ -181,18 +218,48 @@ git push origin main
 
 ---
 
-## Deployment Workflow
+## Staged Deployment Pipeline
 
-### Automatic Deployment (on push to main)
+Changes flow through a development stage with an acceptance gate before they reach
+production (REQ-015):
 
-```bash
-git commit -m "feat: add new feature"
-git push origin main  # Triggers CI/CD automatically
+```
+push → backend-test + frontend-test ─┐
+                                     ├─→ deploy-dev ──→ acceptance ──→ deploy-prod
+                                     ┘   (develop)     (vs dev URL)    (main, manual approval)
 ```
 
-1. GitHub Actions runs tests on all commits
-2. If all tests pass, deployment to Uberspace begins
-3. `scripts/deploy.sh` pulls latest code, rebuilds, restarts service
+- **`deploy-dev`** runs on a push to `develop`, deploys that ref to
+  `mattdev@jarnsaxa` (`DEPLOY_REF=develop`), and publishes to
+  `https://mattdev.uber.space/picnic`.
+- **`acceptance`** runs `pytest -m acceptance` against the live dev deployment
+  (`BASE_URL=https://mattdev.uber.space/picnic`). A red run blocks promotion.
+- **`deploy-prod`** runs on a push to `main`, deploys `main` to
+  `mattmaxx@giclas` (`DEPLOY_REF=main`), and **waits for manual approval** on the
+  `production` environment before running.
+
+Because dev/acceptance gate the `develop` branch and prod deploys from `main`, the
+acceptance gate for `main` is enforced by a **branch-protection rule**: require the
+CI/CD pipeline (the develop run) to pass before a PR can merge into `main`.
+Configure it under **Settings → Branches → Branch protection rules** for `main`.
+
+## Deployment Workflow
+
+### Normal flow (develop → acceptance → main)
+
+```bash
+# 1. Land work on develop → deploys to dev + runs acceptance tests
+git checkout develop && git merge feature/my-change
+git push origin develop
+
+# 2. Once dev is green, open a PR develop → main and merge it
+#    → deploy-prod runs and waits for your approval in the Actions UI
+```
+
+1. GitHub Actions runs tests on all commits.
+2. On `develop`: deploy to dev, then acceptance tests against the dev URL.
+3. On `main` (after merge): `deploy-prod` pauses for manual approval, then
+   `scripts/deploy.sh` pulls `main`, rebuilds, and restarts the service.
 4. App is live at https://matt-maxx.de/picnic
 
 ### Manual Deployment
@@ -203,8 +270,9 @@ To deploy manually (without pushing to main):
 # SSH into Uberspace
 ssh -i ~/.ssh/id_ed25519_uberspace mattmaxx@giclas.uberspace.de
 
-# Run deploy script
+# Run deploy script (defaults to DEPLOY_REF=main; override to deploy another ref)
 bash ~/picnic/scripts/deploy.sh
+DEPLOY_REF=develop PUBLIC_BASE_URL=https://mattdev.uber.space/picnic bash ~/picnic/scripts/deploy.sh
 ```
 
 ### Rollback
