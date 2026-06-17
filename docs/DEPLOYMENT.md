@@ -36,7 +36,7 @@ acceptance tests, and production (see **Staged Deployment Pipeline** below).
 | Uberspace user | `mattmaxx` | `mattdev` |
 | App URL | `https://matt-maxx.de/picnic` | `https://mattdev.uber.space/picnic` |
 | SSH port | `22` | `22` |
-| Deploys from branch | `main` | `develop` |
+| Role | Production | Staging (acceptance-tested before prod) |
 
 **Note:** Your personal SSH key (`~/.ssh/id_ed25519_uberspace`) is for *your* login.
 For GitHub Actions, create a **separate, dedicated deploy key** — this way you can
@@ -196,8 +196,8 @@ one-time setup as production — repeat Steps 1–2 (a dedicated dev deploy key)
 Step 4 (the `picnic` supervisord service), and Step 5 (`uberspace web backend set
 /picnic --http --port 8000`) while SSH'd into the dev host, and place a dev `.env`
 (its own empty SQLite DB; IMAP credentials optional for a pure smoke-test stage).
-Once provisioned, the `deploy-dev` job deploys the `develop` branch to it
-automatically. Verify with:
+Once provisioned, the `deploy-dev` job deploys each `main` candidate to it
+automatically (staging) before production. Verify with:
 
 ```bash
 curl https://mattdev.uber.space/picnic/health   # → {"status": "ok"}
@@ -220,45 +220,43 @@ git push origin main
 
 ## Staged Deployment Pipeline
 
-Changes flow through a development stage with an acceptance gate before they reach
-production (REQ-015):
+A push to `main` runs the whole chain in **one** pipeline: the candidate is
+deployed to the dev (staging) Uberspace, acceptance-tested there, and only then
+promoted to production (REQ-015):
 
 ```
-push → backend-test + frontend-test ─┐
-                                     ├─→ deploy-dev ──→ acceptance ──→ deploy-prod
-                                     ┘   (develop)     (vs dev URL)    (main, manual approval)
+push to main → backend-test + frontend-test ─┐
+                                             ├─→ deploy-dev ──→ acceptance ──→ deploy-prod
+                                             ┘   (staging)     (vs dev URL)    (manual approval)
 ```
 
-- **`deploy-dev`** runs on a push to `develop`, deploys that ref to
-  `mattdev@jarnsaxa` (`DEPLOY_REF=develop`), and publishes to
-  `https://mattdev.uber.space/picnic`.
+- **`deploy-dev`** deploys the `main` commit to `mattdev@jarnsaxa`
+  (`DEPLOY_REF=main`) and publishes to `https://mattdev.uber.space/picnic`.
 - **`acceptance`** runs `pytest -m acceptance` against the live dev deployment
   (`BASE_URL=https://mattdev.uber.space/picnic`). A red run blocks promotion.
-- **`deploy-prod`** runs on a push to `main`, deploys `main` to
-  `mattmaxx@giclas` (`DEPLOY_REF=main`), and **waits for manual approval** on the
-  `production` environment before running.
+- **`deploy-prod`** `needs: acceptance`, deploys `main` to `mattmaxx@giclas`, and
+  **waits for manual approval** on the `production` environment before running.
 
-Because dev/acceptance gate the `develop` branch and prod deploys from `main`, the
-acceptance gate for `main` is enforced by a **branch-protection rule**: require the
-CI/CD pipeline (the develop run) to pass before a PR can merge into `main`.
-Configure it under **Settings → Branches → Branch protection rules** for `main`.
+The acceptance gate is enforced in-run by the `needs` edges (`deploy-prod` →
+`acceptance` → `deploy-dev`): production can never deploy unless the dev deploy and
+acceptance tests both passed in the same pipeline. No branch-protection rule is
+required for the gate itself. Feature work flows through PRs into `main`; the test
+jobs run on every push/PR, and only the deploy chain is gated on `main`.
 
 ## Deployment Workflow
 
-### Normal flow (develop → acceptance → main)
+### Normal flow (PR → main)
 
 ```bash
-# 1. Land work on develop → deploys to dev + runs acceptance tests
-git checkout develop && git merge feature/my-change
-git push origin develop
-
-# 2. Once dev is green, open a PR develop → main and merge it
-#    → deploy-prod runs and waits for your approval in the Actions UI
+# 1. Open a PR with your feature branch → main (tests run on the PR)
+# 2. Merge the PR into main → the full chain runs:
+#    deploy-dev → acceptance → deploy-prod (waits for your approval)
 ```
 
-1. GitHub Actions runs tests on all commits.
-2. On `develop`: deploy to dev, then acceptance tests against the dev URL.
-3. On `main` (after merge): `deploy-prod` pauses for manual approval, then
+1. GitHub Actions runs tests on every push/PR.
+2. On a push to `main`: deploy the commit to dev, run acceptance against the dev
+   URL.
+3. If acceptance is green, `deploy-prod` pauses for manual approval, then
    `scripts/deploy.sh` pulls `main`, rebuilds, and restarts the service.
 4. App is live at https://matt-maxx.de/picnic
 
@@ -272,7 +270,9 @@ ssh -i ~/.ssh/id_ed25519_uberspace mattmaxx@giclas.uberspace.de
 
 # Run deploy script (defaults to DEPLOY_REF=main; override to deploy another ref)
 bash ~/picnic/scripts/deploy.sh
-DEPLOY_REF=develop PUBLIC_BASE_URL=https://mattdev.uber.space/picnic bash ~/picnic/scripts/deploy.sh
+
+# On the dev host, set the public URL for correct log output:
+PUBLIC_BASE_URL=https://mattdev.uber.space/picnic bash ~/picnic/scripts/deploy.sh
 ```
 
 ### Rollback

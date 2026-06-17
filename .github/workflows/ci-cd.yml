@@ -116,13 +116,14 @@ jobs:
           echo "✓ Build successful"
 
   # ============================================================
-  # Deploy to the DEV Uberspace (on push to develop)
+  # Deploy the release candidate to the DEV (staging) Uberspace
+  # first, so acceptance tests run against it before production.
   # ============================================================
   deploy-dev:
     name: Deploy to Dev Uberspace
     needs: [backend-test, frontend-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: development
       url: https://mattdev.uber.space/picnic
@@ -136,11 +137,11 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.UBERSPACE_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy develop to Dev Uberspace
+      - name: Deploy candidate to Dev Uberspace
         run: |
           ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.UBERSPACE_SSH_PORT }} \
             ${{ secrets.UBERSPACE_USER }}@${{ secrets.UBERSPACE_HOST }} \
-            "DEPLOY_REF=develop PUBLIC_BASE_URL=https://mattdev.uber.space/picnic bash -s" < scripts/deploy.sh
+            "DEPLOY_REF=main PUBLIC_BASE_URL=https://mattdev.uber.space/picnic bash -s" < scripts/deploy.sh
           echo "✓ Dev deployment successful"
 
   # ============================================================
@@ -173,26 +174,15 @@ jobs:
           echo "✓ Acceptance tests passed against $BASE_URL"
 
   # ============================================================
-  # Deploy to PRODUCTION (on push to main, manual approval gate)
+  # Deploy to PRODUCTION after acceptance passes on Dev.
   # The `production` environment carries a required-reviewer rule
-  # so this job waits for approval before running (REQ-015).
+  # so this job waits for manual approval before running (REQ-015).
   # ============================================================
   deploy-prod:
     name: Deploy to Production Uberspace
-    needs: [backend-test, frontend-test, acceptance]
+    needs: acceptance
     runs-on: ubuntu-latest
-    # On a push to main, deploy-dev/acceptance are skipped (they gate the develop
-    # branch); the acceptance gate for main is enforced by branch protection
-    # requiring the develop pipeline to pass before merge (see docs/DEPLOYMENT.md).
-    # `always()` lets this job run despite those skips, while still requiring the
-    # test jobs to have succeeded and acceptance not to have failed.
-    if: >-
-      always() &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      needs.backend-test.result == 'success' &&
-      needs.frontend-test.result == 'success' &&
-      needs.acceptance.result != 'failure'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: production
       url: https://matt-maxx.de/picnic

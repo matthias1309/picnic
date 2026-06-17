@@ -32,11 +32,11 @@ def _needs(job: dict) -> list[str]:
 
 
 # TC-015-01
-def test_deploy_dev_is_bound_to_develop_and_development_environment(jobs):
+def test_deploy_dev_is_bound_to_main_and_development_environment(jobs):
     deploy_dev = jobs["deploy-dev"]
 
     assert _environment_name(deploy_dev) == "development"
-    assert "refs/heads/develop" in deploy_dev["if"]
+    assert "refs/heads/main" in deploy_dev["if"]
     assert {"backend-test", "frontend-test"} <= set(_needs(deploy_dev))
 
 

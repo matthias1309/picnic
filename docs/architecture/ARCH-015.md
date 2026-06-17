@@ -8,12 +8,13 @@
 ## Summary
 
 The single-stage pipeline (test → deploy to production on `main`) is replaced by a
-three-stage flow: **test → deploy to a dev Uberspace → acceptance tests against
-that dev deployment → deploy to production**. Production only deploys from `main`,
-only after the acceptance stage is green, and only after a manual approval on the
-`production` GitHub environment. The deploy script is parametrised so the same
-script deploys any ref to either host. A new HTTP-level acceptance suite, driven
-by `BASE_URL`, is the executable gate.
+linear three-stage flow that runs in **one** pipeline on a push to `main`:
+**test → deploy the candidate to the dev (staging) Uberspace → acceptance tests
+against that dev deployment → deploy to production**. Production deploys only after
+the acceptance stage is green (it `needs: acceptance`) and only after a manual
+approval on the `production` GitHub environment. The deploy script is parametrised
+so the same script deploys any ref to either host. A new HTTP-level acceptance
+suite, driven by `BASE_URL`, is the executable gate.
 
 ## Design
 
@@ -22,14 +23,15 @@ by `BASE_URL`, is the executable gate.
 ```
 backend-test ─┐
               ├─→ deploy-dev ──→ acceptance ──→ deploy-prod
-frontend-test ┘   (develop)     (vs dev URL)    (main, manual approval)
+frontend-test ┘   (staging)     (vs dev URL)    (manual approval)
+                  ── all gated on push to main, one linear run ──
 ```
 
 - `deploy-dev`
   - `needs: [backend-test, frontend-test]`
-  - `if: github.event_name == 'push' && github.ref == 'refs/heads/develop'`
+  - `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`
   - `environment: { name: development, url: https://mattdev.uber.space/picnic }`
-  - SSH-deploys with `DEPLOY_REF=develop`.
+  - SSH-deploys the candidate with `DEPLOY_REF=main` to the dev host.
 - `acceptance`
   - `needs: deploy-dev`
   - Sets `BASE_URL=https://mattdev.uber.space/picnic`, installs dev deps, runs
@@ -40,19 +42,18 @@ frontend-test ┘   (develop)     (vs dev URL)    (main, manual approval)
   - `environment: { name: production, url: https://matt-maxx.de/picnic }`
   - SSH-deploys with `DEPLOY_REF=main`.
 
-Because `develop` and `main` are mutually exclusive refs, a single push activates
-exactly one of `deploy-dev` / `deploy-prod`. The dev→acceptance→prod chain is
-exercised across the develop run (dev + acceptance) and, after a merge, the main
-run (prod). The `needs: acceptance` edge keeps `deploy-prod` from ever starting
-while the acceptance job is missing/failed.
+A push to `main` runs the full chain in a single pipeline. The `needs: deploy-dev`
+and `needs: acceptance` edges form a hard, in-run gate: if the dev deploy or the
+acceptance tests fail, `deploy-prod` is skipped. The dev host therefore acts as a
+staging environment for the exact commit about to be promoted to production.
 
-> **Trade-off (per-push vs. one linear run):** with the chosen `develop → dev,
-> main → prod` model, dev/acceptance and prod run in *separate* pipeline runs
-> (one per branch), not one end-to-end run. This matches `.claude/rules/git-workflow.md`
-> (develop as the integration branch) and gives a human merge as the promotion
-> point, at the cost of the prod run not re-asserting acceptance in the same run.
-> A branch-protection rule requiring the develop pipeline to pass before merge to
-> `main` closes that gap; documented in `docs/DEPLOYMENT.md`.
+> **Why not `develop → dev, main → prod`:** that model runs dev/acceptance and
+> prod in *separate* pipeline runs (one per branch), so a direct merge to `main`
+> that bypasses `develop` would reach production without acceptance ever running.
+> The linear single-branch model removes that footgun: acceptance is always in the
+> same run, immediately before prod, enforced by `needs`. Feature work still flows
+> through PRs into `main`; the test jobs run on every push/PR, only the deploy
+> chain is gated on `main`.
 
 ### Environments & secrets
 
@@ -114,7 +115,7 @@ A lightweight test parses `ci-cd.yml` (PyYAML) and asserts the gate cannot be
 silently removed (AC-015-01/03/04):
 
 - `deploy-dev` is bound to `environment.name == development` and gated on the
-  `develop` ref.
+  `main` ref.
 - `acceptance.needs` includes `deploy-dev`.
 - `deploy-prod.needs` includes `acceptance`, is bound to `production`, and gated
   on the `main` ref.
@@ -128,5 +129,5 @@ This is structural verification, not a live deploy, and runs in the normal job.
   one-time manual operator runbook in `docs/DEPLOYMENT.md`.
 - Identical-artifact promotion dev→prod (each env builds from its ref).
 - Seeded dev data, browser/E2E acceptance, blue/green, automated rollback.
-- Enforcing the develop-pipeline-passed branch-protection rule in code (GitHub
-  settings; documented, not scripted).
+- Identical-artifact promotion dev→prod — dev and prod each run `deploy.sh` on the
+  same `main` commit, but rebuild independently rather than promoting one artifact.
