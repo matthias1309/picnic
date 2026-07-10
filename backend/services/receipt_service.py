@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import func
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session, selectinload
 
 from backend.imap.parser import ParseError, ParsedReceipt, ReceiptParser
@@ -26,33 +26,66 @@ class ParseSummary:
     items: int
 
 
+def _claim_receipt_for_processing(db: Session, receipt_id: int) -> bool:
+    """Atomically flip one receipt from pending to claimed.
+
+    Returns False if the receipt was no longer processed == False by the time
+    this statement ran — i.e. another session (a different Gunicorn worker's
+    scheduler tick, or a concurrent manual re-parse) already claimed it. The
+    caller must not store items in that case (REQ-016).
+
+    A plain read-then-write (SELECT processed, then UPDATE) would let two
+    sessions both observe processed == False before either commits. This is
+    a single UPDATE ... WHERE statement instead: SQLite serializes writers at
+    the file level, so only one of two concurrent claims on the same row can
+    ever see rowcount == 1.
+    """
+    result = db.execute(
+        update(Receipt)
+        .where(Receipt.id == receipt_id, Receipt.processed.is_(False))
+        .values(processed=True)
+    )
+    db.commit()
+    return result.rowcount == 1
+
+
 def parse_pending_receipts(db: Session, parser: ReceiptParser | None = None) -> ParseSummary:
     """Parse all receipts with processed == False.
 
-    Each receipt is parsed and committed in its own transaction, so a single
-    malformed email does not affect the others (AC-002-05).
+    Each receipt is claimed, parsed, and committed in its own transaction, so
+    a single malformed email does not affect the others (AC-002-05), and a
+    receipt already claimed by a concurrent caller is skipped rather than
+    parsed twice (AC-016-01).
     """
     parser = parser or ReceiptParser()
-    pending = db.query(Receipt).filter(Receipt.processed.is_(False)).all()
+    pending_ids = [
+        receipt_id
+        for (receipt_id,) in db.query(Receipt.id).filter(Receipt.processed.is_(False)).all()
+    ]
 
     parsed_count = 0
     failed_count = 0
     item_count = 0
 
-    for receipt in pending:
+    for receipt_id in pending_ids:
+        if not _claim_receipt_for_processing(db, receipt_id):
+            continue
+
+        receipt = db.query(Receipt).filter(Receipt.id == receipt_id).first()
+
         try:
             html = parser.extract_html(receipt.raw_email_text)
             parsed_receipt = parser.parse(html)
         except ParseError as error:
             logger.error(f"Failed to parse receipt {receipt.id}: {error}")
+            receipt.processed = False  # release the claim so a later run retries it
+            db.commit()
             failed_count += 1
             continue
 
         receipt.delivery_date = parsed_receipt.delivery_date
         _store_parsed_receipt(db, receipt, parsed_receipt)
         _reconcile_total(receipt, parsed_receipt)
-
-        receipt.processed = True
         db.commit()
 
         parsed_count += 1

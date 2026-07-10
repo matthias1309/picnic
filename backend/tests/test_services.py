@@ -8,12 +8,34 @@ Verifies: REQ-002 (AC-002-01, AC-002-02, AC-002-03, AC-002-04, AC-002-05, AC-002
 import logging
 from datetime import date, datetime
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from backend.config import settings
-from backend.models import BudgetSetting, PriceHistory, Product, Receipt, ReceiptItem
+from backend.models import Base, BudgetSetting, PriceHistory, Product, Receipt, ReceiptItem
 from backend.services import budget_service
-from backend.services.receipt_service import ParseSummary, delete_receipt, parse_pending_receipts
+from backend.services.receipt_service import (
+    ParseSummary,
+    _claim_receipt_for_processing,
+    delete_receipt,
+    parse_pending_receipts,
+)
 
 RECEIVED_DATE = datetime(2026, 6, 1, 20, 45)
+
+
+def _file_backed_sessions(tmp_path):
+    """Two independent Session objects on the same on-disk SQLite file.
+
+    Mirrors two Gunicorn worker processes each holding their own connection
+    to the same production database, unlike the in-memory `db_session`
+    fixture (StaticPool, single shared connection) which cannot exercise
+    cross-connection locking.
+    """
+    engine = create_engine(f"sqlite:///{tmp_path / 'race.db'}")
+    Base.metadata.create_all(bind=engine)
+    session_factory = sessionmaker(bind=engine)
+    return session_factory(), session_factory()
 
 
 def _make_pending_receipt(message_id: str, raw_email_text: str) -> Receipt:
@@ -270,6 +292,114 @@ def test_parse_pending_receipts_is_noop_when_nothing_pending(db_session):
 
     # Assert
     assert summary == ParseSummary(parsed=0, failed=0, items=0)
+
+
+# TC-016-01: Only one of two concurrent sessions claims a pending receipt
+def test_claim_receipt_for_processing_only_succeeds_once_across_sessions(tmp_path):
+    """
+    Given a receipt with processed=False, persisted to a file-backed SQLite
+      database, and two independent sessions open on that same file
+    When _claim_receipt_for_processing(db, receipt_id) is called from the
+      first session, then from the second, for the same receipt_id
+    Then the first call returns True and the second returns False
+    And the receipt's processed column is True (claimed exactly once)
+    """
+    # Arrange
+    session_a, session_b = _file_backed_sessions(tmp_path)
+    receipt = Receipt(
+        message_id="race-1@picnic.app",
+        received_date=RECEIVED_DATE,
+        from_address="info@service.picnic.de",
+        raw_email_text="irrelevant for this test",
+        processed=False,
+    )
+    session_a.add(receipt)
+    session_a.commit()
+    receipt_id = receipt.id
+
+    # Act
+    claimed_by_a = _claim_receipt_for_processing(session_a, receipt_id)
+    claimed_by_b = _claim_receipt_for_processing(session_b, receipt_id)
+
+    # Assert
+    assert claimed_by_a is True
+    assert claimed_by_b is False
+
+    session_b.expire_all()
+    assert session_b.query(Receipt).filter_by(id=receipt_id).one().processed is True
+
+    session_a.close()
+    session_b.close()
+
+
+# TC-016-02: parse_pending_receipts skips a receipt claimed elsewhere
+def test_parse_pending_receipts_skips_receipt_claimed_by_another_session(
+    tmp_path, make_raw_email, picnic_receipt_html
+):
+    """
+    Given a pending receipt with valid invoice HTML
+    And the receipt is claimed by another session immediately before
+      parse_pending_receipts(db) runs
+    When parse_pending_receipts(db) is called
+    Then no receipt_items or price_history rows are stored for that receipt
+    And ParseSummary reports parsed=0, failed=0, items=0
+    """
+    # Arrange
+    session_a, session_b = _file_backed_sessions(tmp_path)
+    receipt = Receipt(
+        message_id="race-2@picnic.app",
+        received_date=RECEIVED_DATE,
+        from_address="info@service.picnic.de",
+        raw_email_text=make_raw_email(picnic_receipt_html),
+        processed=False,
+    )
+    session_a.add(receipt)
+    session_a.commit()
+    receipt_id = receipt.id
+
+    # The other worker wins the race and claims the receipt first.
+    assert _claim_receipt_for_processing(session_b, receipt_id) is True
+
+    # Act
+    summary = parse_pending_receipts(session_a)
+
+    # Assert
+    assert summary == ParseSummary(parsed=0, failed=0, items=0)
+    assert session_a.query(ReceiptItem).filter_by(receipt_id=receipt_id).count() == 0
+    assert session_a.query(PriceHistory).filter_by(receipt_id=receipt_id).count() == 0
+
+    session_a.close()
+    session_b.close()
+
+
+# TC-016-03: A failed parse releases the receipt for retry
+def test_parse_pending_receipts_retries_a_receipt_that_failed_to_parse(
+    db_session, make_raw_email, picnic_receipt_malformed_html
+):
+    """
+    Given a pending receipt with malformed HTML (no item rows)
+    When parse_pending_receipts(db) is called
+    Then the receipt ends with processed=False
+    And a second call to parse_pending_receipts(db) still attempts to parse
+      it again (it is not permanently stuck claimed)
+    """
+    # Arrange
+    receipt = _make_pending_receipt(
+        "bon-retry@picnic.app", make_raw_email(picnic_receipt_malformed_html)
+    )
+    db_session.add(receipt)
+    db_session.commit()
+
+    # Act
+    first_summary = parse_pending_receipts(db_session)
+    db_session.refresh(receipt)
+    still_pending_after_first_run = receipt.processed is False
+    second_summary = parse_pending_receipts(db_session)
+
+    # Assert
+    assert first_summary == ParseSummary(parsed=0, failed=1, items=0)
+    assert still_pending_after_first_run
+    assert second_summary == ParseSummary(parsed=0, failed=1, items=0)
 
 
 # TC-009-01: delete_receipt removes a receipt, its items, and its price history
