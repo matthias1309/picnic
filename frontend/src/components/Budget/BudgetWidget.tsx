@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useBudget, useUpdateBudget } from "../../hooks/useStats";
-import { formatCents, getCurrentMonth } from "../../lib/format";
+import { getCurrentMonth } from "../../lib/format";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { LoadingSpinner } from "../common/LoadingSpinner";
+import { BudgetStatusCard } from "./BudgetStatusCard";
 
 export function BudgetWidget() {
   const month = getCurrentMonth();
@@ -21,7 +22,6 @@ export function BudgetWidget() {
   }
 
   const isOverBudget = data.remaining_cents < 0;
-  const percentSpent = data.budget_cents > 0 ? (data.spent_cents / data.budget_cents) * 100 : 0;
 
   const startEditing = () => {
     setDraftValue((data.budget_cents / 100).toString());
@@ -47,20 +47,15 @@ export function BudgetWidget() {
     );
   };
 
-  return (
-    <div
-      data-testid="budget-widget"
-      className={`rounded-lg p-4 shadow ${isOverBudget ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}
-    >
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">Budget for {data.month}</p>
-        {!isEditing && (
-          <button type="button" onClick={startEditing} className="text-sm font-medium underline">
-            Edit budget
-          </button>
-        )}
-      </div>
-      {isEditing ? (
+  if (isEditing) {
+    return (
+      <div
+        data-testid="budget-widget"
+        className={`rounded-lg p-4 shadow ${isOverBudget ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">Budget for {data.month}</p>
+        </div>
         <div className="mt-2">
           <label className="block text-sm font-medium" htmlFor="monthly-budget-input">
             Monthly budget (€)
@@ -92,26 +87,19 @@ export function BudgetWidget() {
             </button>
           </div>
         </div>
-      ) : (
-        <>
-          <p className="text-xl font-semibold">
-            {formatCents(data.spent_cents)} / {formatCents(data.budget_cents)}
-          </p>
-          <div className="mt-2 h-2 w-full rounded bg-gray-200">
-            <div
-              className={`h-2 rounded ${isOverBudget ? "bg-red-600" : "bg-green-600"}`}
-              style={{ width: `${Math.min(percentSpent, 100)}%` }}
-            />
-          </div>
-          {isOverBudget ? (
-            <p className="mt-2 text-sm font-medium">
-              Over budget by {formatCents(-data.remaining_cents)}
-            </p>
-          ) : (
-            <p className="mt-2 text-sm">Remaining: {formatCents(data.remaining_cents)}</p>
-          )}
-        </>
-      )}
-    </div>
+      </div>
+    );
+  }
+
+  return (
+    <BudgetStatusCard
+      data={data}
+      testId="budget-widget"
+      action={
+        <button type="button" onClick={startEditing} className="text-sm font-medium underline">
+          Edit budget
+        </button>
+      }
+    />
   );
 }

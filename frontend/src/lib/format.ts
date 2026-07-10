@@ -11,6 +11,16 @@ export function getCurrentMonth(today: Date = new Date()): string {
   return `${year}-${month}`;
 }
 
+/** Returns the `n` months immediately preceding the month of `today`, most recent first. */
+export function getPastMonths(n: number, today: Date = new Date()): string[] {
+  const months: string[] = [];
+  for (let i = 1; i <= n; i++) {
+    const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    months.push(getCurrentMonth(date));
+  }
+  return months;
+}
+
 const RANGE_MONTHS: Record<string, number> = {
   "3m": 3,
   "6m": 6,
