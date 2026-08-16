@@ -13,6 +13,7 @@ const RECEIPTS_FIXTURE: PaginatedReceipts = {
     {
       id: 3,
       received_date: "2026-06-10T12:00:00Z",
+      effective_date: "2026-06-10T12:00:00Z",
       from_address: "picnic@picnic.de",
       item_count: 5,
       total_cents: 4200,
@@ -20,6 +21,7 @@ const RECEIPTS_FIXTURE: PaginatedReceipts = {
     {
       id: 2,
       received_date: "2026-06-03T12:00:00Z",
+      effective_date: "2026-06-03T12:00:00Z",
       from_address: "picnic@picnic.de",
       item_count: 3,
       total_cents: 1800,
@@ -27,6 +29,7 @@ const RECEIPTS_FIXTURE: PaginatedReceipts = {
     {
       id: 1,
       received_date: "2026-05-27T12:00:00Z",
+      effective_date: "2026-05-27T12:00:00Z",
       from_address: "picnic@picnic.de",
       item_count: 8,
       total_cents: 6750,
@@ -37,9 +40,30 @@ const RECEIPTS_FIXTURE: PaginatedReceipts = {
   offset: 0,
 };
 
+// Reprocessed long after actual delivery, as happened in production on
+// 2026-06-16/17 (REQ-018): received_date is the reprocessing timestamp,
+// effective_date is the real delivery date. The two must diverge here so
+// TC-018-04 proves the component reads effective_date, not received_date.
+const REPROCESSED_RECEIPT_FIXTURE: PaginatedReceipts = {
+  items: [
+    {
+      id: 19,
+      received_date: "2026-06-17T04:57:53Z",
+      effective_date: "2026-04-15T00:00:00Z",
+      from_address: "picnic@picnic.de",
+      item_count: 24,
+      total_cents: 5821,
+    },
+  ],
+  total: 1,
+  limit: 20,
+  offset: 0,
+};
+
 const RECEIPT_DETAIL_FIXTURE: ReceiptDetail = {
   id: 3,
   received_date: "2026-06-10T12:00:00Z",
+  effective_date: "2026-06-10T12:00:00Z",
   from_address: "picnic@picnic.de",
   items: [
     {
@@ -63,6 +87,7 @@ const RECEIPT_DETAIL_FIXTURE: ReceiptDetail = {
 const GROUPED_RECEIPT_DETAIL_FIXTURE: ReceiptDetail = {
   id: 4,
   received_date: "2026-06-14T12:00:00Z",
+  effective_date: "2026-06-14T12:00:00Z",
   from_address: "picnic@picnic.de",
   items: [
     {
@@ -81,6 +106,25 @@ const GROUPED_RECEIPT_DETAIL_FIXTURE: ReceiptDetail = {
     },
   ],
   total_cents: 307,
+};
+
+// Same reprocessing scenario as REPROCESSED_RECEIPT_FIXTURE, for the detail
+// view (TC-018-05).
+const REPROCESSED_RECEIPT_DETAIL_FIXTURE: ReceiptDetail = {
+  id: 19,
+  received_date: "2026-06-17T04:57:53Z",
+  effective_date: "2026-04-15T00:00:00Z",
+  from_address: "picnic@picnic.de",
+  items: [
+    {
+      product_name: "Paprika rot",
+      quantity: 1,
+      unit_price_cents: 0,
+      line_total_cents: 0,
+      order_number: "308-536-1572",
+    },
+  ],
+  total_cents: 0,
 };
 
 beforeEach(() => {
@@ -123,6 +167,32 @@ describe("Receipts", () => {
     expect(screen.getByText("1-3 of 3")).toBeInTheDocument();
   });
 
+  // TC-018-04
+  // Given a receipt whose received_date (reprocessing timestamp) differs
+  //   from its effective_date (real delivery date)
+  // When the user opens the receipts list
+  // Then the entry displays the effective_date, not the received_date
+  it("shows the effective (delivery) date, not the received_date, in the receipts list", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
+      if (path === "/receipts") return Promise.resolve(REPROCESSED_RECEIPT_FIXTURE);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    // Act
+    renderWithProviders(
+      <Routes>
+        <Route path="/receipts" element={<Receipts />} />
+      </Routes>,
+      { route: "/receipts" },
+    );
+
+    // Assert
+    const list = await screen.findByTestId("receipt-list");
+    expect(list).toHaveTextContent("15.4.2026");
+    expect(list).not.toHaveTextContent("17.6.2026");
+  });
+
   it("shows a receipt's line items with quantities and prices when selected", async () => {
     // Arrange
     vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
@@ -146,6 +216,32 @@ describe("Receipts", () => {
     expect(detail).toHaveTextContent("1,98 €");
     expect(detail).toHaveTextContent("Milk");
     expect(detail).toHaveTextContent("3,07 €");
+  });
+
+  // TC-018-05
+  // Given a receipt whose received_date (reprocessing timestamp) differs
+  //   from its effective_date (real delivery date)
+  // When the user opens that receipt's detail page
+  // Then the heading displays the effective_date, not the received_date
+  it("shows the effective (delivery) date, not the received_date, in the receipt detail heading", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
+      if (path === "/receipts/19") return Promise.resolve(REPROCESSED_RECEIPT_DETAIL_FIXTURE);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    // Act
+    renderWithProviders(
+      <Routes>
+        <Route path="/receipts/:id" element={<Receipts />} />
+      </Routes>,
+      { route: "/receipts/19" },
+    );
+
+    // Assert
+    const detail = await screen.findByTestId("receipt-detail");
+    expect(detail).toHaveTextContent("Receipt from 15.4.2026");
+    expect(detail).not.toHaveTextContent("17.6.2026");
   });
 
   // TC-013-05

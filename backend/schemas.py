@@ -24,10 +24,11 @@ class UserOut(BaseModel):
 
 
 class ReceiptSummary(BaseModel):
-    """A single entry in the receipt list (AC-003-01)."""
+    """A single entry in the receipt list (AC-003-01, AC-018-01)."""
 
     id: int
     received_date: datetime
+    effective_date: datetime
     from_address: str
     item_count: int
     total_cents: int
@@ -53,10 +54,11 @@ class ReceiptItemOut(BaseModel):
 
 
 class ReceiptDetail(BaseModel):
-    """Full receipt with its line items (AC-003-02)."""
+    """Full receipt with its line items (AC-003-02, AC-018-02)."""
 
     id: int
     received_date: datetime
+    effective_date: datetime
     from_address: str
     items: list[ReceiptItemOut]
     total_cents: int

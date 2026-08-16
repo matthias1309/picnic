@@ -37,7 +37,7 @@ export function ReceiptList() {
               to={`/receipts/${receipt.id}`}
               className="flex items-center justify-between py-2 hover:bg-gray-50"
             >
-              <span>{new Date(receipt.received_date).toLocaleDateString("de-DE")}</span>
+              <span>{new Date(receipt.effective_date).toLocaleDateString("de-DE")}</span>
               <span className="text-gray-500">{receipt.item_count} items</span>
               <span className="font-medium">{formatCents(receipt.total_cents)}</span>
             </Link>

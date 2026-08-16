@@ -64,7 +64,7 @@ export function ReceiptDetail({ receiptId }: ReceiptDetailProps) {
     <div data-testid="receipt-detail">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">
-          Receipt from {new Date(data.received_date).toLocaleDateString("de-DE")}
+          Receipt from {new Date(data.effective_date).toLocaleDateString("de-DE")}
         </h2>
         <button
           type="button"

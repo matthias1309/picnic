@@ -5,17 +5,20 @@ Traces: ARCH-003
 Verifies: REQ-003 (AC-003-01, AC-003-02, AC-003-03, AC-003-04, AC-003-05, AC-003-06)
 """
 
-from datetime import datetime
+from datetime import date, datetime
 
 from backend.models import PriceHistory, Product, Receipt, ReceiptItem
 
 BASE = "/picnic/api"
 
 
-def _make_receipt(message_id: str, received_date: datetime) -> Receipt:
+def _make_receipt(
+    message_id: str, received_date: datetime, delivery_date: date | None = None
+) -> Receipt:
     return Receipt(
         message_id=message_id,
         received_date=received_date,
+        delivery_date=delivery_date,
         from_address="info@service.picnic.de",
         raw_email_text="raw",
         processed=True,
@@ -150,6 +153,92 @@ def test_get_receipt_includes_order_number(client, db_session):
         item["product_name"]: item["order_number"] for item in response.json()["items"]
     }
     assert order_by_name == {"Milch": "209-521-1175", "Brot": "204-701-1435"}
+
+
+# TC-018-01: List receipts exposes effective_date, distinct from received_date
+def test_list_receipts_exposes_effective_date(client, db_session):
+    """
+    Given a receipt with delivery_date = 2026-04-15 and received_date =
+        2026-06-17 10:00 (simulating a receipt reprocessed long after its
+        real delivery)
+    When the client requests GET /picnic/api/receipts
+    Then the entry's effective_date is 2026-04-15
+    And the entry's received_date is still 2026-06-17 10:00
+    """
+    # Arrange
+    receipt = _make_receipt(
+        "r-effective@picnic.app",
+        received_date=datetime(2026, 6, 17, 10, 0),
+        delivery_date=date(2026, 4, 15),
+    )
+    db_session.add(receipt)
+    db_session.commit()
+
+    # Act
+    response = client.get(f"{BASE}/receipts")
+
+    # Assert
+    assert response.status_code == 200
+    entry = response.json()["items"][0]
+    assert entry["effective_date"].startswith("2026-04-15")
+    assert entry["received_date"].startswith("2026-06-17T10:00")
+
+
+# TC-018-02: Receipt detail exposes effective_date, distinct from received_date
+def test_get_receipt_exposes_effective_date(client, db_session):
+    """
+    Given the same receipt as TC-018-01
+    When the client requests GET /picnic/api/receipts/{id}
+    Then the response's effective_date is 2026-04-15
+    And the response's received_date is still 2026-06-17 10:00
+    """
+    # Arrange
+    receipt = _make_receipt(
+        "r-effective-detail@picnic.app",
+        received_date=datetime(2026, 6, 17, 10, 0),
+        delivery_date=date(2026, 4, 15),
+    )
+    db_session.add(receipt)
+    db_session.commit()
+
+    # Act
+    response = client.get(f"{BASE}/receipts/{receipt.id}")
+
+    # Assert
+    assert response.status_code == 200
+    body = response.json()
+    assert body["effective_date"].startswith("2026-04-15")
+    assert body["received_date"].startswith("2026-06-17T10:00")
+
+
+# TC-018-03: effective_date falls back to received_date when delivery_date is unset
+def test_effective_date_falls_back_to_received_date(client, db_session):
+    """
+    Given a receipt with delivery_date = None and received_date =
+        2026-06-15 18:50
+    When the client requests GET /picnic/api/receipts and
+        GET /picnic/api/receipts/{id}
+    Then both responses' effective_date equals the received_date
+    """
+    # Arrange
+    receipt = _make_receipt(
+        "r-no-delivery-date@picnic.app",
+        received_date=datetime(2026, 6, 15, 18, 50),
+        delivery_date=None,
+    )
+    db_session.add(receipt)
+    db_session.commit()
+
+    # Act
+    list_response = client.get(f"{BASE}/receipts")
+    detail_response = client.get(f"{BASE}/receipts/{receipt.id}")
+
+    # Assert
+    list_entry = list_response.json()["items"][0]
+    assert list_entry["effective_date"] == list_entry["received_date"]
+
+    detail_body = detail_response.json()
+    assert detail_body["effective_date"] == detail_body["received_date"]
 
 
 # TC-003-03: Get a single receipt returns 404 when not found
