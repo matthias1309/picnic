@@ -54,6 +54,7 @@ def list_receipts(
         ReceiptSummary(
             id=receipt.id,
             received_date=receipt.received_date,
+            effective_date=receipt.effective_date,
             from_address=receipt.from_address,
             item_count=len(receipt.items),
             total_cents=sum(item.line_total_cents for item in receipt.items),
@@ -83,6 +84,7 @@ def get_receipt(receipt_id: int, db: Session = Depends(get_db)) -> ReceiptDetail
     return ReceiptDetail(
         id=receipt.id,
         received_date=receipt.received_date,
+        effective_date=receipt.effective_date,
         from_address=receipt.from_address,
         items=items,
         total_cents=sum(item.line_total_cents for item in receipt.items),

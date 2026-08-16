@@ -69,6 +69,7 @@ export interface ProductOut {
 export interface ReceiptSummary {
   id: number;
   received_date: string;
+  effective_date: string;
   from_address: string;
   item_count: number;
   total_cents: number;
@@ -92,6 +93,7 @@ export interface ReceiptItemOut {
 export interface ReceiptDetail {
   id: number;
   received_date: string;
+  effective_date: string;
   from_address: string;
   items: ReceiptItemOut[];
   total_cents: number;
