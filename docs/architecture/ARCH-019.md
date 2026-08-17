@@ -1,6 +1,6 @@
 # ARCH-019 — Configurable URL Prefix and Frontend Base Path
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-08-17
 **Traces:** REQ-019
 **Verified by:** TEST-019
