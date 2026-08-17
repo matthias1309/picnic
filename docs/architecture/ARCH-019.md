@@ -187,6 +187,49 @@ is updated.
   routers, two sets of docs, double the route count in `/docs`) buys
   nothing.
 
+## Post-Merge Incident: `extra_forbidden` Crashed Prod Startup
+
+**What happened:** after adding the four documented lines to production's
+`.env` and redeploying, the gunicorn worker crashed on boot:
+
+```
+pydantic_core._pydantic_core.ValidationError: 3 validation errors for Settings
+vite_base_path
+  Extra inputs are not permitted [type=extra_forbidden, ...]
+vite_api_base
+  Extra inputs are not permitted [type=extra_forbidden, ...]
+frontend_publish_dir
+  Extra inputs are not permitted [type=extra_forbidden, ...]
+```
+
+Both `matt-maxx.de/picnic` and `picnic.matt-maxx.de` went down (502) — one
+shared gunicorn process serves both.
+
+**Root cause:** `pydantic_settings.BaseSettings` rejects any `.env` key that
+doesn't match a declared field by default (`extra = "forbid"`, implicit).
+This design (§ Design, "Per-host `.env`") deliberately put three
+`deploy.sh`-only, shell-level values (`VITE_BASE_PATH`, `VITE_API_BASE`,
+`FRONTEND_PUBLISH_DIR`) in the same `.env` file as `Settings` fields, on the
+premise that `.env` is already this project's single per-host config store
+— but didn't account for `Settings` validating the *entire* file against
+its own field list, not just the fields it reads. `URL_PREFIX` (a real
+`Settings` field) was fine; the other three weren't declared anywhere on
+`Settings` and tripped `extra_forbidden`.
+
+**Fix:** `Settings.Config` gets `extra = "ignore"` — the correct setting
+for a `.env` file that is deliberately shared with a non-Pydantic consumer
+(`deploy.sh`'s `read_env_default`). Verified against a real reproduction
+(a temp `.env` file with the same four lines that broke prod) in
+`backend/tests/test_config.py`, red without the fix, green with it.
+
+**Why this wasn't caught earlier:** `backend/tests/test_url_prefix.py`
+exercises `Settings(url_prefix=...)` and `build_router(prefix)` directly via
+constructor arguments / function calls, never through an actual `.env`
+*file* read — so it never went through `DotEnvSettingsSource`, the code
+path where `extra_forbidden` fires. The gap is now closed by
+`test_config.py`, which reads from a real temp `.env` file, matching
+production's actual startup path.
+
 ## Out of Scope
 
 - DNS records for `picnic.matt-maxx.de`.
