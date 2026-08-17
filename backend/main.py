@@ -200,21 +200,13 @@ app.add_middleware(
 )
 
 
-# Routes are served under /picnic, matching the Uberspace path-based
-# reverse proxy ("uberspace web backend set /picnic --http --port 8000"),
-# which forwards the full request path without stripping the prefix.
-router = APIRouter(prefix="/picnic")
-
-
 # Health check endpoint
-@router.get("/health")
 async def health():
     """Health check endpoint."""
     return {"status": "ok"}
 
 
 # Root endpoint
-@router.get("/")
 async def root():
     """Root endpoint with API info."""
     return {
@@ -224,12 +216,32 @@ async def root():
     }
 
 
-# Auth routes (/picnic/api/auth/*) are unauthenticated by default; only
-# GET /auth/me declares its own get_current_user dependency. All other
-# /picnic/api/* routes require a valid session (REQ-006).
-router.include_router(auth_router, prefix="/api")
-router.include_router(api_router, dependencies=[Depends(get_current_user)])
-app.include_router(router)
+def build_router(prefix: str) -> APIRouter:
+    """Wire health/root/auth/api routes under the given prefix.
+
+    Extracted as a pure function (REQ-019) so it's unit-testable at any
+    prefix without booting the real `app` (scheduler/IMAP startup side
+    effects) — see backend/tests/test_url_prefix.py.
+
+    Dev/staging keeps URL_PREFIX unset, defaulting to "/picnic" here, to
+    match Uberspace's path-based reverse proxy
+    ("uberspace web backend set /picnic --http --port 8000"), which forwards
+    the full request path without stripping the prefix. Production sets
+    URL_PREFIX="" to mount everything at its own domain's root instead.
+
+    Auth routes (<prefix>/api/auth/*) are unauthenticated by default; only
+    GET /auth/me declares its own get_current_user dependency. All other
+    <prefix>/api/* routes require a valid session (REQ-006).
+    """
+    router = APIRouter(prefix=prefix)
+    router.get("/health")(health)
+    router.get("/")(root)
+    router.include_router(auth_router, prefix="/api")
+    router.include_router(api_router, dependencies=[Depends(get_current_user)])
+    return router
+
+
+app.include_router(build_router(settings.url_prefix))
 
 
 if __name__ == "__main__":

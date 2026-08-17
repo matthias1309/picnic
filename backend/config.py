@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     debug: bool = True
     log_level: str = "INFO"
 
+    # URL prefix every route is mounted under (REQ-019). Defaults to today's
+    # dev/staging value; production sets URL_PREFIX="" (empty) in its .env
+    # to serve from its own domain's root instead of a /picnic path.
+    url_prefix: str = "/picnic"
+
     # CORS Configuration (for frontend), as a comma-separated list of origins
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 

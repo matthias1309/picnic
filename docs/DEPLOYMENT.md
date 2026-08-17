@@ -312,7 +312,62 @@ LOG_LEVEL=INFO
 
 # CORS
 CORS_ORIGINS=https://matt-maxx.de
+
+# URL scheme (REQ-019) — see "Cutting Over to a Dedicated Domain" below.
+# Leave unset on a host still using path-based routing.
+# URL_PREFIX=
+# VITE_BASE_PATH=/
+# VITE_API_BASE=/api
+# FRONTEND_PUBLISH_DIR=/var/www/virtual/mattmaxx/picnic.matt-maxx.de
 ```
+
+---
+
+## Cutting Over Production to a Dedicated Domain (REQ-019)
+
+Production can be moved off the shared path-based scheme
+(`matt-maxx.de/picnic` + `/picnic-frontend/`) onto its own subdomain (e.g.
+`picnic.matt-maxx.de`), serving the frontend at the domain root and the API
+under `/api`. This is a one-time cutover on the **production** Uberspace
+host only — dev/staging keeps the path-based scheme unchanged (it has no
+`URL_PREFIX`/`VITE_*`/`FRONTEND_PUBLISH_DIR` lines in its `.env`, so
+`scripts/deploy.sh` keeps defaulting to today's values).
+
+1. **DNS:** add `A`/`AAAA` records for the new domain, pointing at the same
+   IPs the production host already resolves to
+   (`dig +short giclas.uberspace.de`).
+2. **Register the domain on Uberspace** (production host only), once DNS has
+   propagated:
+   ```bash
+   ssh -i ~/.ssh/id_ed25519_uberspace mattmaxx@giclas.uberspace.de
+   uberspace web domain add picnic.matt-maxx.de
+   ```
+3. **Route `/api` and `/health` to the backend**, leaving the domain root on
+   the default Apache/static backend:
+   ```bash
+   uberspace web backend set picnic.matt-maxx.de/api --http --port 8000
+   uberspace web backend set picnic.matt-maxx.de/health --http --port 8000
+   ```
+4. **Create the domain's document root** for the static frontend build
+   (must live outside `/home`, per Uberspace's DocumentRoot rules):
+   ```bash
+   mkdir -p /var/www/virtual/mattmaxx/picnic.matt-maxx.de
+   printf 'RewriteBase /\n' > /var/www/virtual/mattmaxx/picnic.matt-maxx.de/.htaccess
+   ```
+5. **Add the four lines** shown in the `.env` example above to
+   `~/picnic/.env` on the production host, then run a normal deploy
+   (`bash ~/picnic/scripts/deploy.sh`, or push to `main`).
+6. **Verify:**
+   ```bash
+   curl https://picnic.matt-maxx.de/health         # → {"status":"ok"}
+   curl https://picnic.matt-maxx.de/api/stats/summary  # → 401 (unauthenticated, expected)
+   ```
+   and open `https://picnic.matt-maxx.de/` in a browser.
+
+Once this is done, `https://matt-maxx.de/picnic` and `/picnic-frontend/`
+stop working (the running backend no longer registers those paths, and the
+frontend build's URLs are no longer path-prefixed) — this is intentional,
+not a regression; see REQ-019.
 
 ---
 
