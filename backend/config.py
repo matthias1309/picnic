@@ -65,6 +65,12 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        # .env is shared with scripts/deploy.sh (REQ-019: VITE_BASE_PATH,
+        # VITE_API_BASE, FRONTEND_PUBLISH_DIR are shell-only, read by
+        # deploy.sh's read_env_default, not by this class). Pydantic
+        # defaults to rejecting unrecognized keys, which would otherwise
+        # crash startup as soon as any such shell-only key is present.
+        extra = "ignore"
 
 
 # Global settings instance
