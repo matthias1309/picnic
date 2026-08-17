@@ -187,7 +187,42 @@ is updated.
   routers, two sets of docs, double the route count in `/docs`) buys
   nothing.
 
-## Post-Merge Incident: `extra_forbidden` Crashed Prod Startup
+## Post-Merge Incident 2: Session Cookie `Path` Didn't Track `url_prefix`
+
+**What happened:** after incident 1's fix restored the backend, the site
+loaded but every authenticated view showed "Failed to load summary
+statistics." / "Failed to load budget status." — 401s on every `/api/*`
+call after login.
+
+**Root cause:** `backend/api/auth_routes.py` set/deleted the session cookie
+with a hardcoded `path="/picnic"`, independent of `settings.url_prefix`.
+With `URL_PREFIX=""` in prod, routes moved to `/api/*` and `/health`
+(domain root), but the cookie's `Path` attribute still said `/picnic` — a
+browser only sends a cookie back on requests whose path falls under the
+cookie's `Path`, so it was never sent to `/api/*`, and every authenticated
+request 401'd. This was missed in the original design pass entirely; § Key
+Decisions never considered the cookie.
+
+**Fix:** the cookie path is now computed at request time,
+`settings.url_prefix or "/"` (empty prefix needs literal `"/"`, not `""`,
+which isn't a valid cookie path), via a small `_cookie_path()` helper in
+`auth_routes.py` — not cached at import time, so it always reflects
+whatever `settings.url_prefix` actually is when a request is handled.
+
+**Testing note:** the first attempt at a regression test computed the
+cookie path as a module-level constant read from the real `settings`
+singleton once, while separately passing an arbitrary `prefix` string to
+`build_router()` for the throwaway test app — the two didn't have to agree,
+and in fact didn't in the test process (`settings.url_prefix` defaults to
+`/picnic` regardless of what's passed to `build_router`). The corrected
+tests (`test_login_cookie_path_matches_*_url_prefix` in
+`test_url_prefix.py`) `monkeypatch.setattr(settings, "url_prefix", prefix)`
+*and* pass that same `prefix` to `build_router()`, mirroring exactly how
+`backend/main.py` wires the two together in the real app
+(`build_router(settings.url_prefix)`) — this is what made the test properly
+red before the `_cookie_path()` fix and green after.
+
+## Post-Merge Incident 1: `extra_forbidden` Crashed Prod Startup
 
 **What happened:** after adding the four documented lines to production's
 `.env` and redeploying, the gunicorn worker crashed on boot:

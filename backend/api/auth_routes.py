@@ -20,6 +20,16 @@ SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
 auth_router = APIRouter(prefix="/auth")
 
 
+def _cookie_path() -> str:
+    """The session cookie's Path attribute, read fresh from settings on
+    every call (REQ-019) rather than cached at import time — it must match
+    whatever prefix routes are *actually* mounted under right now, or
+    browsers won't send the cookie back on requests to those routes. An
+    empty url_prefix (prod, its own domain root) needs Path=/, not Path=""
+    (not a valid cookie path)."""
+    return settings.url_prefix or "/"
+
+
 @auth_router.post("/login", response_model=UserOut)
 def login(credentials: LoginRequest, response: Response, db: Session = Depends(get_db)) -> UserOut:
     """Authenticate with username/password and set a session cookie."""
@@ -40,7 +50,7 @@ def login(credentials: LoginRequest, response: Response, db: Session = Depends(g
         secure=settings.is_production,
         samesite="lax",
         max_age=SESSION_MAX_AGE_SECONDS,
-        path="/picnic",
+        path=_cookie_path(),
     )
     return UserOut(id=user.id, username=user.username)
 
@@ -51,7 +61,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)) 
     token = request.cookies.get(SESSION_COOKIE_NAME)
     if token:
         delete_session(db, token)
-    response.delete_cookie(SESSION_COOKIE_NAME, path="/picnic")
+    response.delete_cookie(SESSION_COOKIE_NAME, path=_cookie_path())
     return {"ok": True}
 
 
