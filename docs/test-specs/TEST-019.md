@@ -1,6 +1,6 @@
 # TEST-019 — Configurable URL Prefix and Frontend Base Path
 
-**Status:** draft
+**Status:** approved
 **Created:** 2026-08-17
 **Traces:** ARCH-019
 **Verifies:** REQ-019 (AC-019-01, AC-019-02, AC-019-03, AC-019-04, AC-019-05, AC-019-06, AC-019-07)
