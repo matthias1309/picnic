@@ -32,6 +32,15 @@ FRONTEND_BUILD="${PICNIC_ROOT}/frontend/dist"
 # port, which is identical on both Uberspace hosts.
 PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-https://matt-maxx.de/picnic}"
 
+# Per-host config (REQ-019): read from PICNIC_ROOT/.env, which already
+# exists by this point (created once by hand per docs/DEPLOYMENT.md, before
+# the first deploy). Defaults reproduce today's single hardcoded scheme, so
+# a host whose .env has none of these lines behaves exactly as before.
+URL_PREFIX="$(read_env_default URL_PREFIX /picnic "${PICNIC_ROOT}/.env")"
+VITE_BASE_PATH="$(read_env_default VITE_BASE_PATH /picnic-frontend/ "${PICNIC_ROOT}/.env")"
+VITE_API_BASE="$(read_env_default VITE_API_BASE /picnic/api "${PICNIC_ROOT}/.env")"
+FRONTEND_PUBLISH_DIR="$(read_env_default FRONTEND_PUBLISH_DIR "$HOME/html/picnic-frontend" "${PICNIC_ROOT}/.env")"
+
 echo "======================================"
 echo "Picnic Expense Tracker - Deploy Script"
 echo "======================================"
@@ -96,15 +105,16 @@ echo "[5/6] Building frontend..."
 if command -v node &> /dev/null; then
     cd "$PICNIC_ROOT/frontend"
     npm ci --quiet
-    npm run build --quiet
-    echo "✓ Frontend built"
+    VITE_BASE_PATH="$VITE_BASE_PATH" VITE_API_BASE="$VITE_API_BASE" npm run build --quiet
+    echo "✓ Frontend built (base=$VITE_BASE_PATH, api=$VITE_API_BASE)"
 
-    # Publish the built SPA so it's served at https://matt-maxx.de/picnic-frontend/
-    # (Uberspace serves static files from ~/html)
-    rm -rf "$HOME/html/picnic-frontend"
-    mkdir -p "$HOME/html/picnic-frontend"
-    cp -r "$FRONTEND_BUILD"/. "$HOME/html/picnic-frontend/"
-    echo "✓ Frontend published to ~/html/picnic-frontend"
+    # Publish the built SPA to FRONTEND_PUBLISH_DIR (defaults to
+    # ~/html/picnic-frontend, served at https://matt-maxx.de/picnic-frontend/;
+    # prod points this at picnic.matt-maxx.de's own document root instead).
+    rm -rf "$FRONTEND_PUBLISH_DIR"
+    mkdir -p "$FRONTEND_PUBLISH_DIR"
+    cp -r "$FRONTEND_BUILD"/. "$FRONTEND_PUBLISH_DIR/"
+    echo "✓ Frontend published to $FRONTEND_PUBLISH_DIR"
 else
     echo "⚠ Node.js not found, skipping frontend build"
     echo "  (Frontend must be pre-built by GitHub Actions)"
@@ -125,7 +135,7 @@ echo "✓ Service restarted via supervisord"
 # (gunicorn workers need a moment to bind after a restart)
 echo "Waiting for health check..."
 for i in 1 2 3 4 5 6 7 8 9 10; do
-    if curl -fs http://127.0.0.1:8000/picnic/health > /dev/null; then
+    if curl -fs "http://127.0.0.1:8000${URL_PREFIX}/health" > /dev/null; then
         echo "✓ Health check passed"
         break
     fi

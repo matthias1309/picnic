@@ -1,4 +1,18 @@
-const API_BASE = "/picnic/api";
+/**
+ * Resolves the API base path from the environment (REQ-019).
+ *
+ * Defaults to today's dev/staging value so a host with no VITE_API_BASE set
+ * behaves exactly as before. Production sets VITE_API_BASE=/api to call its
+ * own domain's root-relative API instead.
+ *
+ * Kept as a small pure function so it's unit-testable directly — see
+ * frontend/tests/UrlConfig.test.ts.
+ */
+export function resolveApiBase(env: { VITE_API_BASE?: string }): string {
+  return env.VITE_API_BASE ?? "/picnic/api";
+}
+
+const API_BASE = resolveApiBase(import.meta.env);
 
 export class ApiError extends Error {
   constructor(
