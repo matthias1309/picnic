@@ -13,6 +13,7 @@ import { useUiStore } from "../../store/useUiStore";
 import { formatCents, rangeToFromDate } from "../../lib/format";
 import type { PriceHistoryRange } from "../../types";
 import { EmptyState } from "../common/EmptyState";
+import { ProductCombobox } from "./ProductCombobox";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 
@@ -38,21 +39,11 @@ export function PriceHistory() {
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Preisverlauf</h2>
         <div className="flex items-center gap-2">
-          <select
-            aria-label="Artikel auswählen"
-            value={selectedProductId ?? ""}
-            onChange={(event) =>
-              setSelectedProductId(event.target.value ? Number(event.target.value) : null)
-            }
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          >
-            <option value="">Artikel auswählen</option>
-            {products.data?.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
-              </option>
-            ))}
-          </select>
+          <ProductCombobox
+            products={products.data ?? []}
+            selectedProductId={selectedProductId}
+            onSelect={setSelectedProductId}
+          />
           <div role="group" aria-label="Zeitraum" className="flex gap-1">
             {(Object.keys(RANGE_LABELS) as PriceHistoryRange[]).map((option) => (
               <button
