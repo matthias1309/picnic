@@ -45,7 +45,7 @@ beforeEach(() => {
 });
 
 describe("PriceHistory", () => {
-  // TC-005-02
+  // TC-005-02, TC-021-12
   // Given a product with price history is selected
   // When the user views the price history chart
   // Then a Recharts line chart renders price over time
@@ -64,9 +64,9 @@ describe("PriceHistory", () => {
     ).toBeInTheDocument();
 
     // Act
-    await screen.findByRole("option", { name: "Bananas" });
-    const select = screen.getByLabelText(/artikel auswählen/i);
-    await userEvent.selectOptions(select, "1");
+    const picker = await screen.findByRole("combobox", { name: "Artikel" });
+    await userEvent.type(picker, "banan");
+    await userEvent.click(await screen.findByRole("option", { name: /^Bananas/ }));
 
     // Assert
     expect(await screen.findByTestId("price-history-chart")).toBeInTheDocument();
@@ -76,6 +76,7 @@ describe("PriceHistory", () => {
     expect(screen.getByRole("heading", { name: "Preisverlauf" })).toBeInTheDocument();
   });
 
+  // TC-021-13
   it("offers configurable time ranges (3 Mon. / 6 Mon. / 12 Mon. / Gesamt)", async () => {
     // Arrange
     const fetchJsonMock = vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
@@ -85,9 +86,9 @@ describe("PriceHistory", () => {
     });
 
     renderWithProviders(<PriceHistory />);
-    await screen.findByRole("option", { name: "Bananas" });
-    const select = screen.getByLabelText(/artikel auswählen/i);
-    await userEvent.selectOptions(select, "1");
+    const picker = await screen.findByRole("combobox", { name: "Artikel" });
+    await userEvent.type(picker, "banan");
+    await userEvent.click(await screen.findByRole("option", { name: /^Bananas/ }));
     await screen.findByTestId("price-history-chart");
 
     // Act
@@ -180,10 +181,11 @@ describe("PriceHistory German empty states", () => {
     });
 
     renderWithProviders(<PriceHistory />);
-    await screen.findByRole("option", { name: "Bananas" });
+    const picker = await screen.findByRole("combobox", { name: "Artikel" });
 
     // Act
-    await userEvent.selectOptions(screen.getByLabelText(/artikel auswählen/i), "1");
+    await userEvent.type(picker, "banan");
+    await userEvent.click(await screen.findByRole("option", { name: /^Bananas/ }));
 
     // Assert
     expect(
