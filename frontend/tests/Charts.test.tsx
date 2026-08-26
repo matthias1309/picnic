@@ -59,21 +59,24 @@ describe("PriceHistory", () => {
     });
 
     renderWithProviders(<PriceHistory />);
-    expect(screen.getByText(/choose a product/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("Wähle einen Artikel, um seinen Preisverlauf zu sehen."),
+    ).toBeInTheDocument();
 
     // Act
     await screen.findByRole("option", { name: "Bananas" });
-    const select = screen.getByLabelText(/select product/i);
+    const select = screen.getByLabelText(/artikel auswählen/i);
     await userEvent.selectOptions(select, "1");
 
     // Assert
     expect(await screen.findByTestId("price-history-chart")).toBeInTheDocument();
-    expect(screen.getByText(/min: 0,99/i)).toBeInTheDocument();
-    expect(screen.getByText(/max: 1,09/i)).toBeInTheDocument();
-    expect(screen.getByText(/avg: 1,04/i)).toBeInTheDocument();
+    expect(screen.getByText(/min\. 0,99/i)).toBeInTheDocument();
+    expect(screen.getByText(/max\. 1,09/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ø 1,04/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Preisverlauf" })).toBeInTheDocument();
   });
 
-  it("offers configurable time ranges (3m / 6m / 12m / all)", async () => {
+  it("offers configurable time ranges (3 Mon. / 6 Mon. / 12 Mon. / Gesamt)", async () => {
     // Arrange
     const fetchJsonMock = vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
       if (path === "/products") return Promise.resolve(PRODUCTS_FIXTURE);
@@ -83,13 +86,16 @@ describe("PriceHistory", () => {
 
     renderWithProviders(<PriceHistory />);
     await screen.findByRole("option", { name: "Bananas" });
-    const select = screen.getByLabelText(/select product/i);
+    const select = screen.getByLabelText(/artikel auswählen/i);
     await userEvent.selectOptions(select, "1");
     await screen.findByTestId("price-history-chart");
 
     // Act
-    const rangeGroup = screen.getByRole("group", { name: /time range/i });
-    const threeMonthButton = findButtonByText(rangeGroup, "3m");
+    const rangeGroup = screen.getByRole("group", { name: /zeitraum/i });
+    const threeMonthButton = findButtonByText(rangeGroup, "3 Mon.");
+    expect(findButtonByText(rangeGroup, "6 Mon.")).toBeInTheDocument();
+    expect(findButtonByText(rangeGroup, "12 Mon.")).toBeInTheDocument();
+    expect(findButtonByText(rangeGroup, "Gesamt")).toBeInTheDocument();
     await userEvent.click(threeMonthButton);
 
     // Assert
@@ -120,6 +126,9 @@ describe("PurchaseStats", () => {
 
     // Assert
     expect(await screen.findByTestId("spending-chart")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Ausgaben im Zeitverlauf" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Meistgekaufte Artikel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Monat" })).toBeInTheDocument();
     const topItemsList = await screen.findByTestId("top-items-list");
     expect(topItemsList).toHaveTextContent("Bananas");
     expect(topItemsList).toHaveTextContent("Milk");
@@ -137,7 +146,7 @@ describe("PurchaseStats", () => {
     await screen.findByTestId("spending-chart");
 
     // Act
-    const weekButton = screen.getByRole("button", { name: /week/i });
+    const weekButton = screen.getByRole("button", { name: "Woche" });
     await userEvent.click(weekButton);
 
     // Assert
@@ -155,3 +164,30 @@ function findButtonByText(container: HTMLElement, name: string): HTMLElement {
   }
   return button;
 }
+
+describe("PriceHistory German empty states", () => {
+  // TC-020-07
+  // Given a product is selected whose trend has no points
+  // Then "Für diesen Artikel liegt kein Preisverlauf vor." is displayed
+  it("reports an empty price trend in German", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
+      if (path === "/products") return Promise.resolve(PRODUCTS_FIXTURE);
+      if (path.startsWith("/stats/price-trend")) {
+        return Promise.resolve({ ...PRICE_TREND_FIXTURE, points: [] });
+      }
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    renderWithProviders(<PriceHistory />);
+    await screen.findByRole("option", { name: "Bananas" });
+
+    // Act
+    await userEvent.selectOptions(screen.getByLabelText(/artikel auswählen/i), "1");
+
+    // Assert
+    expect(
+      await screen.findByText("Für diesen Artikel liegt kein Preisverlauf vor."),
+    ).toBeInTheDocument();
+  });
+});

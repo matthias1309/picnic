@@ -19,8 +19,8 @@ export function PurchaseStats() {
     <div className="space-y-6">
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Spending over time</h2>
-          <div role="group" aria-label="Aggregation period" className="flex gap-2">
+          <h2 className="text-lg font-semibold">Ausgaben im Zeitverlauf</h2>
+          <div role="group" aria-label="Zeitraum" className="flex gap-2">
             {PERIODS.map((period) => (
               <button
                 key={period}
@@ -31,7 +31,7 @@ export function PurchaseStats() {
                   statsPeriod === period ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-700"
                 }`}
               >
-                {period === "week" ? "Week" : "Month"}
+                {period === "week" ? "Woche" : "Monat"}
               </button>
             ))}
           </div>
@@ -39,10 +39,13 @@ export function PurchaseStats() {
 
         {spending.isLoading && <LoadingSpinner />}
         {spending.isError && (
-          <ErrorMessage message="Failed to load spending data." onRetry={spending.refetch} />
+          <ErrorMessage
+            message="Ausgabendaten konnten nicht geladen werden."
+            onRetry={spending.refetch}
+          />
         )}
         {spending.data && spending.data.buckets.length === 0 && (
-          <EmptyState message="No spending data available yet." />
+          <EmptyState message="Noch keine Ausgabendaten vorhanden." />
         )}
         {spending.data && spending.data.buckets.length > 0 && (
           <div data-testid="spending-chart" style={{ width: "100%", height: 250 }}>
@@ -60,13 +63,16 @@ export function PurchaseStats() {
       </div>
 
       <div>
-        <h2 className="mb-2 text-lg font-semibold">Top purchased items</h2>
+        <h2 className="mb-2 text-lg font-semibold">Meistgekaufte Artikel</h2>
         {topItems.isLoading && <LoadingSpinner />}
         {topItems.isError && (
-          <ErrorMessage message="Failed to load top items." onRetry={topItems.refetch} />
+          <ErrorMessage
+            message="Meistgekaufte Artikel konnten nicht geladen werden."
+            onRetry={topItems.refetch}
+          />
         )}
         {topItems.data && topItems.data.length === 0 && (
-          <EmptyState message="No purchases recorded yet." />
+          <EmptyState message="Noch keine Einkäufe erfasst." />
         )}
         {topItems.data && topItems.data.length > 0 && (
           <ul data-testid="top-items-list" className="divide-y divide-gray-200">

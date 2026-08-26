@@ -18,11 +18,11 @@ export function ReceiptList() {
   }
 
   if (isError || !data) {
-    return <ErrorMessage message="Failed to load receipts." onRetry={refetch} />;
+    return <ErrorMessage message="Kassenbons konnten nicht geladen werden." onRetry={refetch} />;
   }
 
   if (data.items.length === 0) {
-    return <EmptyState message="No receipts found." />;
+    return <EmptyState message="Keine Kassenbons gefunden." />;
   }
 
   const hasPrevious = offset > 0;
@@ -38,7 +38,7 @@ export function ReceiptList() {
               className="flex items-center justify-between py-2 hover:bg-gray-50"
             >
               <span>{new Date(receipt.effective_date).toLocaleDateString("de-DE")}</span>
-              <span className="text-gray-500">{receipt.item_count} items</span>
+              <span className="text-gray-500">{receipt.item_count} Artikel</span>
               <span className="font-medium">{formatCents(receipt.total_cents)}</span>
             </Link>
           </li>
@@ -51,10 +51,10 @@ export function ReceiptList() {
           disabled={!hasPrevious}
           className="rounded bg-gray-100 px-3 py-1 text-sm disabled:opacity-50"
         >
-          Previous
+          Zurück
         </button>
         <span className="text-sm text-gray-500">
-          {offset + 1}-{Math.min(offset + data.limit, data.total)} of {data.total}
+          {offset + 1}–{Math.min(offset + data.limit, data.total)} von {data.total}
         </span>
         <button
           type="button"
@@ -62,7 +62,7 @@ export function ReceiptList() {
           disabled={!hasNext}
           className="rounded bg-gray-100 px-3 py-1 text-sm disabled:opacity-50"
         >
-          Next
+          Weiter
         </button>
       </div>
     </div>

@@ -21,10 +21,10 @@ export function Login() {
 
   return (
     <div className="mx-auto mt-16 max-w-sm rounded bg-white p-6 shadow">
-      <h1 className="mb-4 text-lg font-semibold text-gray-800">Picnic Expense Tracker</h1>
+      <h1 className="mb-4 text-lg font-semibold text-gray-800">Picnic Ausgaben-Tracker</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm text-gray-700">
-          Username
+          Benutzername
           <input
             type="text"
             value={username}
@@ -35,7 +35,7 @@ export function Login() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm text-gray-700">
-          Password
+          Passwort
           <input
             type="password"
             value={password}
@@ -45,13 +45,15 @@ export function Login() {
             required
           />
         </label>
-        {login.isError && <p className="text-sm text-red-600">Invalid username or password.</p>}
+        {login.isError && (
+          <p className="text-sm text-red-600">Benutzername oder Passwort ist falsch.</p>
+        )}
         <button
           type="submit"
           disabled={login.isPending}
           className="rounded bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
         >
-          {login.isPending ? "Logging in…" : "Log in"}
+          {login.isPending ? "Wird angemeldet…" : "Anmelden"}
         </button>
       </form>
     </div>

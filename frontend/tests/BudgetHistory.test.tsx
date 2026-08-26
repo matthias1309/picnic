@@ -21,7 +21,7 @@ describe("BudgetHistory", () => {
   // Given the API returns a budget status for each of the last 12 months
   // When the user views the BudgetHistory component
   // Then 12 budget cards are rendered, one for each preceding month
-  // And none of them shows an "Edit budget" control
+  // And none of them shows a "Budget bearbeiten" control
   it("renders one read-only card per historical month", async () => {
     // Arrange
     vi.spyOn(apiClient, "fetchJson").mockImplementation((_path, params) =>
@@ -34,13 +34,13 @@ describe("BudgetHistory", () => {
     // Assert
     const cards = await screen.findAllByTestId("budget-history-card");
     expect(cards).toHaveLength(12);
-    expect(screen.queryByRole("button", { name: /edit budget/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /budget bearbeiten/i })).not.toBeInTheDocument();
   });
 
   // TC-017-03
   // Given a historical month's spend exceeds its budget
   // When its card is rendered
-  // Then the card shows the over-budget color and "Over budget by" text
+  // Then the card shows the over-budget color and "über Budget" text
   it("shows the over-budget style for a month that exceeded its budget", async () => {
     // Arrange
     vi.spyOn(apiClient, "fetchJson").mockImplementation((_path, params) =>
@@ -55,7 +55,7 @@ describe("BudgetHistory", () => {
     // Assert
     const cards = await screen.findAllByTestId("budget-history-card");
     expect(cards[0].className).toContain("red");
-    expect(cards[0]).toHaveTextContent("Over budget by");
+    expect(cards[0]).toHaveTextContent("über Budget");
   });
 
   // TC-017-04
@@ -74,7 +74,7 @@ describe("BudgetHistory", () => {
     // Assert
     const cards = await screen.findAllByTestId("budget-history-card");
     expect(cards[0].className).not.toContain("red");
-    expect(cards[0]).toHaveTextContent("Remaining");
+    expect(cards[0]).toHaveTextContent("Verbleibend");
   });
 
   // TC-017-05
@@ -98,6 +98,6 @@ describe("BudgetHistory", () => {
     await screen.findAllByTestId("budget-history-card");
 
     // Assert
-    expect(screen.getAllByRole("button", { name: /edit budget/i })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /budget bearbeiten/i })).toHaveLength(1);
   });
 });

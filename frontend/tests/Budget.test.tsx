@@ -62,7 +62,7 @@ describe("BudgetWidget", () => {
     const widget = await screen.findByTestId("budget-widget");
     expect(widget.className).toContain("red");
     expect(widget).toHaveTextContent("350,00 €");
-    expect(widget).toHaveTextContent("Over budget");
+    expect(widget).toHaveTextContent("über Budget");
   });
 
   // TC-011-07
@@ -78,12 +78,12 @@ describe("BudgetWidget", () => {
     // Act
     renderWithProviders(<BudgetWidget />);
     await screen.findByTestId("budget-widget");
-    await user.click(screen.getByRole("button", { name: "Edit budget" }));
+    await user.click(screen.getByRole("button", { name: "Budget bearbeiten" }));
 
     // Assert
     expect(screen.getByRole("spinbutton")).toHaveValue(300);
-    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Speichern" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
   });
 
   // TC-011-08
@@ -105,16 +105,16 @@ describe("BudgetWidget", () => {
     // Act
     renderWithProviders(<BudgetWidget />);
     await screen.findByTestId("budget-widget");
-    await user.click(screen.getByRole("button", { name: "Edit budget" }));
+    await user.click(screen.getByRole("button", { name: "Budget bearbeiten" }));
     const input = screen.getByRole("spinbutton");
     await user.clear(input);
     await user.type(input, "350");
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
 
     // Assert
     expect(putJson).toHaveBeenCalledWith("/settings/budget", { monthly_budget_cents: 35000 });
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("button", { name: "Speichern" })).not.toBeInTheDocument(),
     );
     const widget = await screen.findByTestId("budget-widget");
     expect(widget).toHaveTextContent("350,00 €");
@@ -135,22 +135,22 @@ describe("BudgetWidget", () => {
     // Act
     renderWithProviders(<BudgetWidget />);
     await screen.findByTestId("budget-widget");
-    await user.click(screen.getByRole("button", { name: "Edit budget" }));
+    await user.click(screen.getByRole("button", { name: "Budget bearbeiten" }));
     const input = screen.getByRole("spinbutton");
     await user.clear(input);
     await user.type(input, "350");
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Abbrechen" }));
 
     // Assert
     expect(putJson).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Speichern" })).not.toBeInTheDocument();
     const widget = screen.getByTestId("budget-widget");
     expect(widget).toHaveTextContent("300,00 €");
   });
 
   // TC-011-10
   // Given the budget widget is in edit mode
-  // When the user changes the input to "-10" and clicks "Save"
+  // When the user changes the input to "-10" and clicks "Speichern"
   // Then apiClient.putJson is not called
   // And a validation message is shown
   // And the edit form remains open
@@ -163,15 +163,76 @@ describe("BudgetWidget", () => {
     // Act
     renderWithProviders(<BudgetWidget />);
     await screen.findByTestId("budget-widget");
-    await user.click(screen.getByRole("button", { name: "Edit budget" }));
+    await user.click(screen.getByRole("button", { name: "Budget bearbeiten" }));
     const input = screen.getByRole("spinbutton");
     await user.clear(input);
     await user.type(input, "-10");
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
 
     // Assert
     expect(putJson).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
-    expect(screen.getByText(/0 or more/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Speichern" })).toBeInTheDocument();
+    expect(screen.getByText("Bitte gib ein Budget von 0 oder mehr ein.")).toBeInTheDocument();
+  });
+});
+
+describe("BudgetWidget German labels", () => {
+  // TC-020-10
+  // Given a budget response for month "2026-06"
+  // When the budget widget renders
+  // Then the card reads "Budget für Juni 2026" and never the raw API key
+  it("renders the month as a German month name, not the raw API key", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockResolvedValue(UNDER_BUDGET_FIXTURE);
+
+    // Act
+    renderWithProviders(<BudgetWidget />);
+
+    // Assert
+    const widget = await screen.findByTestId("budget-widget");
+    expect(widget).toHaveTextContent("Budget für Juni 2026");
+    expect(widget).not.toHaveTextContent("2026-06");
+  });
+
+  // TC-020-11
+  // Given spending under budget
+  // Then the card reads "Verbleibend: 180,00 €"
+  it("labels the remaining amount in German", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockResolvedValue(UNDER_BUDGET_FIXTURE);
+
+    // Act
+    renderWithProviders(<BudgetWidget />);
+
+    // Assert
+    const widget = await screen.findByTestId("budget-widget");
+    expect(widget).toHaveTextContent("Verbleibend: 180,00 €");
+  });
+
+  it("labels the over-budget amount in German", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockResolvedValue(OVER_BUDGET_FIXTURE);
+
+    // Act
+    renderWithProviders(<BudgetWidget />);
+
+    // Assert
+    const widget = await screen.findByTestId("budget-widget");
+    expect(widget).toHaveTextContent("50,00 € über Budget");
+  });
+
+  it("labels the edit form in German", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockResolvedValue(UNDER_BUDGET_FIXTURE);
+    const user = userEvent.setup();
+
+    // Act
+    renderWithProviders(<BudgetWidget />);
+    await screen.findByTestId("budget-widget");
+    await user.click(screen.getByRole("button", { name: "Budget bearbeiten" }));
+
+    // Assert
+    expect(screen.getByLabelText("Monatsbudget (€)")).toBeInTheDocument();
+    expect(screen.getByTestId("budget-widget")).toHaveTextContent("Budget für Juni 2026");
   });
 });

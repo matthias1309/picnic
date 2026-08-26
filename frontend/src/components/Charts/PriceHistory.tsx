@@ -16,7 +16,12 @@ import { EmptyState } from "../common/EmptyState";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 
-const RANGES: PriceHistoryRange[] = ["3m", "6m", "12m", "all"];
+const RANGE_LABELS: Record<PriceHistoryRange, string> = {
+  "3m": "3 Mon.",
+  "6m": "6 Mon.",
+  "12m": "12 Mon.",
+  all: "Gesamt",
+};
 
 export function PriceHistory() {
   const products = useProducts();
@@ -31,25 +36,25 @@ export function PriceHistory() {
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Price history</h2>
+        <h2 className="text-lg font-semibold">Preisverlauf</h2>
         <div className="flex items-center gap-2">
           <select
-            aria-label="Select product"
+            aria-label="Artikel auswählen"
             value={selectedProductId ?? ""}
             onChange={(event) =>
               setSelectedProductId(event.target.value ? Number(event.target.value) : null)
             }
             className="rounded border border-gray-300 px-2 py-1 text-sm"
           >
-            <option value="">Select a product</option>
+            <option value="">Artikel auswählen</option>
             {products.data?.map((product) => (
               <option key={product.id} value={product.id}>
                 {product.name}
               </option>
             ))}
           </select>
-          <div role="group" aria-label="Time range" className="flex gap-1">
-            {RANGES.map((option) => (
+          <div role="group" aria-label="Zeitraum" className="flex gap-1">
+            {(Object.keys(RANGE_LABELS) as PriceHistoryRange[]).map((option) => (
               <button
                 key={option}
                 type="button"
@@ -59,7 +64,7 @@ export function PriceHistory() {
                   range === option ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-700"
                 }`}
               >
-                {option}
+                {RANGE_LABELS[option]}
               </button>
             ))}
           </div>
@@ -67,22 +72,25 @@ export function PriceHistory() {
       </div>
 
       {selectedProductId === null && (
-        <EmptyState message="Choose a product to view its price history." />
+        <EmptyState message="Wähle einen Artikel, um seinen Preisverlauf zu sehen." />
       )}
 
       {selectedProductId !== null && priceTrend.isLoading && <LoadingSpinner />}
       {selectedProductId !== null && priceTrend.isError && (
-        <ErrorMessage message="Failed to load price history." onRetry={priceTrend.refetch} />
+        <ErrorMessage
+          message="Preisverlauf konnte nicht geladen werden."
+          onRetry={priceTrend.refetch}
+        />
       )}
       {priceTrend.data && priceTrend.data.points.length === 0 && (
-        <EmptyState message="No price history available for this product." />
+        <EmptyState message="Für diesen Artikel liegt kein Preisverlauf vor." />
       )}
       {priceTrend.data && priceTrend.data.points.length > 0 && (
         <>
           <div className="mb-2 flex gap-4 text-sm text-gray-600">
-            <span>Min: {formatCents(priceTrend.data.min_price_cents)}</span>
-            <span>Max: {formatCents(priceTrend.data.max_price_cents)}</span>
-            <span>Avg: {formatCents(priceTrend.data.avg_price_cents)}</span>
+            <span>Min. {formatCents(priceTrend.data.min_price_cents)}</span>
+            <span>Max. {formatCents(priceTrend.data.max_price_cents)}</span>
+            <span>Ø {formatCents(priceTrend.data.avg_price_cents)}</span>
           </div>
           <div data-testid="price-history-chart" style={{ width: "100%", height: 250 }}>
             <ResponsiveContainer>
