@@ -1,5 +1,6 @@
 import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { Button } from "./components/ui/Button";
 import { useCurrentUser, useLogout } from "./hooks/useAuth";
 import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
@@ -17,15 +18,14 @@ export function LogoutButton() {
   const logout = useLogout();
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
       onClick={() =>
         logout.mutate(undefined, { onSuccess: () => navigate("/login", { replace: true }) })
       }
-      className="rounded px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100"
     >
       Abmelden
-    </button>
+    </Button>
   );
 }
 
@@ -33,18 +33,23 @@ export function App() {
   const { data: currentUser } = useCurrentUser();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="flex gap-4">
+    <div className="min-h-screen bg-surface-muted">
+      <header className="sticky top-0 z-20 border-b border-surface-border bg-surface/95 backdrop-blur">
+        <nav className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
+          <span className="hidden shrink-0 text-sm font-semibold text-gray-900 sm:block">
+            Picnic
+          </span>
+          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
             {NAV_LINKS.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
                 end={link.to === "/"}
                 className={({ isActive }) =>
-                  `rounded px-3 py-1 text-sm font-medium ${
-                    isActive ? "bg-gray-800 text-white" : "text-gray-700 hover:bg-gray-100"
+                  `shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+                    isActive
+                      ? "bg-brand-50 text-brand-700"
+                      : "text-gray-600 hover:bg-surface-muted hover:text-gray-900"
                   }`
                 }
               >
@@ -55,7 +60,7 @@ export function App() {
           {currentUser && <LogoutButton />}
         </nav>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-6">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route

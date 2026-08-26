@@ -5,6 +5,9 @@ import { formatCents } from "../../lib/format";
 import { EmptyState } from "../common/EmptyState";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { LoadingSpinner } from "../common/LoadingSpinner";
+import { Button } from "../ui/Button";
+import { Card } from "../ui/Card";
+import { SectionHeader } from "../ui/SectionHeader";
 
 const PAGE_SIZE = 20;
 
@@ -29,42 +32,47 @@ export function ReceiptList() {
   const hasNext = offset + data.limit < data.total;
 
   return (
-    <div>
-      <ul data-testid="receipt-list" className="divide-y divide-gray-200">
+    <Card>
+      <SectionHeader title="Kassenbons" />
+      <ul data-testid="receipt-list" className="divide-y divide-surface-border">
         {data.items.map((receipt) => (
           <li key={receipt.id}>
             <Link
               to={`/receipts/${receipt.id}`}
-              className="flex items-center justify-between py-2 hover:bg-gray-50"
+              className="grid grid-cols-[1fr_auto_auto] items-center gap-4 rounded-lg px-2 py-3 text-sm transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             >
-              <span>{new Date(receipt.effective_date).toLocaleDateString("de-DE")}</span>
-              <span className="text-gray-500">{receipt.item_count} Artikel</span>
-              <span className="font-medium">{formatCents(receipt.total_cents)}</span>
+              <span className="font-medium text-gray-900">
+                {new Date(receipt.effective_date).toLocaleDateString("de-DE")}
+              </span>
+              <span className="w-24 text-right tabular-nums text-gray-500">
+                {receipt.item_count} Artikel
+              </span>
+              <span className="w-24 text-right font-medium tabular-nums text-gray-900">
+                {formatCents(receipt.total_cents)}
+              </span>
             </Link>
           </li>
         ))}
       </ul>
-      <div className="mt-4 flex items-center justify-between">
-        <button
-          type="button"
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-surface-border pt-4">
+        <Button
+          variant="secondary"
           onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
           disabled={!hasPrevious}
-          className="rounded bg-gray-100 px-3 py-1 text-sm disabled:opacity-50"
         >
           Zurück
-        </button>
-        <span className="text-sm text-gray-500">
+        </Button>
+        <span className="text-sm tabular-nums text-gray-500">
           {offset + 1}–{Math.min(offset + data.limit, data.total)} von {data.total}
         </span>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           onClick={() => setOffset(offset + PAGE_SIZE)}
           disabled={!hasNext}
-          className="rounded bg-gray-100 px-3 py-1 text-sm disabled:opacity-50"
         >
           Weiter
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }
