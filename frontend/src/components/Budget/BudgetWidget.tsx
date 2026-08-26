@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useBudget, useUpdateBudget } from "../../hooks/useStats";
-import { getCurrentMonth } from "../../lib/format";
+import { formatMonth, getCurrentMonth } from "../../lib/format";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 import { BudgetStatusCard } from "./BudgetStatusCard";
@@ -18,7 +18,7 @@ export function BudgetWidget() {
   }
 
   if (isError || !data) {
-    return <ErrorMessage message="Failed to load budget status." onRetry={refetch} />;
+    return <ErrorMessage message="Budgetstatus konnte nicht geladen werden." onRetry={refetch} />;
   }
 
   const isOverBudget = data.remaining_cents < 0;
@@ -37,7 +37,7 @@ export function BudgetWidget() {
   const saveBudget = () => {
     const draftEuros = Number(draftValue);
     if (!Number.isFinite(draftEuros) || draftEuros < 0) {
-      setValidationError("Please enter a budget of 0 or more.");
+      setValidationError("Bitte gib ein Budget von 0 oder mehr ein.");
       return;
     }
 
@@ -54,11 +54,11 @@ export function BudgetWidget() {
         className={`rounded-lg p-4 shadow ${isOverBudget ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}
       >
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">Budget for {data.month}</p>
+          <p className="text-sm font-medium">Budget für {formatMonth(data.month)}</p>
         </div>
         <div className="mt-2">
           <label className="block text-sm font-medium" htmlFor="monthly-budget-input">
-            Monthly budget (€)
+            Monatsbudget (€)
           </label>
           <input
             id="monthly-budget-input"
@@ -76,14 +76,14 @@ export function BudgetWidget() {
               onClick={saveBudget}
               className="rounded bg-gray-800 px-3 py-1 text-sm font-medium text-white"
             >
-              Save
+              Speichern
             </button>
             <button
               type="button"
               onClick={cancelEditing}
               className="rounded border border-gray-300 px-3 py-1 text-sm font-medium"
             >
-              Cancel
+              Abbrechen
             </button>
           </div>
         </div>
@@ -97,7 +97,7 @@ export function BudgetWidget() {
       testId="budget-widget"
       action={
         <button type="button" onClick={startEditing} className="text-sm font-medium underline">
-          Edit budget
+          Budget bearbeiten
         </button>
       }
     />

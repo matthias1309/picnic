@@ -3,7 +3,10 @@ interface ErrorMessageProps {
   onRetry?: () => void;
 }
 
-export function ErrorMessage({ message = "Something went wrong.", onRetry }: ErrorMessageProps) {
+export function ErrorMessage({
+  message = "Etwas ist schiefgelaufen.",
+  onRetry,
+}: ErrorMessageProps) {
   return (
     <div role="alert" className="rounded-md bg-red-50 p-4 text-red-700">
       <p>{message}</p>
@@ -13,7 +16,7 @@ export function ErrorMessage({ message = "Something went wrong.", onRetry }: Err
           onClick={onRetry}
           className="mt-2 rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
         >
-          Retry
+          Erneut versuchen
         </button>
       )}
     </div>

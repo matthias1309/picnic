@@ -11,15 +11,20 @@ export function Dashboard() {
   }
 
   if (isError || !data) {
-    return <ErrorMessage message="Failed to load summary statistics." onRetry={refetch} />;
+    return (
+      <ErrorMessage message="Zusammenfassung konnte nicht geladen werden." onRetry={refetch} />
+    );
   }
 
   const cards = [
-    { label: "Total spend", value: formatCents(data.total_spend_cents) },
-    { label: "Receipts", value: data.receipt_count.toLocaleString("de-DE") },
-    { label: "Distinct products", value: data.distinct_product_count.toLocaleString("de-DE") },
-    { label: "Average basket", value: formatCents(data.average_basket_cents) },
-    { label: "This month's spend", value: formatCents(data.current_month_spend_cents) },
+    { label: "Gesamtausgaben", value: formatCents(data.total_spend_cents) },
+    { label: "Kassenbons", value: data.receipt_count.toLocaleString("de-DE") },
+    {
+      label: "Verschiedene Artikel",
+      value: data.distinct_product_count.toLocaleString("de-DE"),
+    },
+    { label: "Durchschnittlicher Einkauf", value: formatCents(data.average_basket_cents) },
+    { label: "Ausgaben diesen Monat", value: formatCents(data.current_month_spend_cents) },
   ];
 
   return (

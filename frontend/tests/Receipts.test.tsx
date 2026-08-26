@@ -164,7 +164,10 @@ describe("Receipts", () => {
     expect(rows[0]).toHaveTextContent("10.6.2026");
     expect(rows[1]).toHaveTextContent("3.6.2026");
     expect(rows[2]).toHaveTextContent("27.5.2026");
-    expect(screen.getByText("1-3 of 3")).toBeInTheDocument();
+    expect(screen.getByText("1\u20133 von 3")).toBeInTheDocument();
+    expect(rows[0]).toHaveTextContent("Artikel");
+    expect(screen.getByRole("button", { name: "Zurück" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Weiter" })).toBeInTheDocument();
   });
 
   // TC-018-04
@@ -215,7 +218,7 @@ describe("Receipts", () => {
     expect(detail).toHaveTextContent("0,99 €");
     expect(detail).toHaveTextContent("1,98 €");
     expect(detail).toHaveTextContent("Milk");
-    expect(detail).toHaveTextContent("3,07 €");
+    expect(detail).toHaveTextContent("Gesamt: 3,07 €");
   });
 
   // TC-018-05
@@ -240,7 +243,7 @@ describe("Receipts", () => {
 
     // Assert
     const detail = await screen.findByTestId("receipt-detail");
-    expect(detail).toHaveTextContent("Receipt from 15.4.2026");
+    expect(detail).toHaveTextContent("Kassenbon vom 15.4.2026");
     expect(detail).not.toHaveTextContent("17.6.2026");
   });
 
@@ -294,7 +297,7 @@ describe("Receipts", () => {
 
     // Assert
     await screen.findByTestId("receipt-detail");
-    expect(screen.getByRole("button", { name: "Delete receipt" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kassenbon löschen" })).toBeInTheDocument();
   });
 
   // TC-009-06
@@ -323,7 +326,7 @@ describe("Receipts", () => {
       { route: "/receipts/3" },
     );
     await screen.findByTestId("receipt-detail");
-    await user.click(screen.getByRole("button", { name: "Delete receipt" }));
+    await user.click(screen.getByRole("button", { name: "Kassenbon löschen" }));
 
     // Assert
     expect(deleteJson).toHaveBeenCalledWith("/receipts/3");
@@ -354,7 +357,7 @@ describe("Receipts", () => {
       { route: "/receipts/3" },
     );
     await screen.findByTestId("receipt-detail");
-    await user.click(screen.getByRole("button", { name: "Delete receipt" }));
+    await user.click(screen.getByRole("button", { name: "Kassenbon löschen" }));
 
     // Assert
     expect(deleteJson).not.toHaveBeenCalled();

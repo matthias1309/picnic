@@ -37,3 +37,12 @@ export function rangeToFromDate(range: string, today: Date = new Date()): string
   from.setMonth(from.getMonth() - months);
   return from.toISOString().slice(0, 10);
 }
+
+/** Formats an API month key ("2026-08") as a German month name ("August 2026"). */
+export function formatMonth(month: string): string {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Date(year, monthNumber - 1, 1).toLocaleDateString("de-DE", {
+    month: "long",
+    year: "numeric",
+  });
+}

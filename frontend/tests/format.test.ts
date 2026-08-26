@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPastMonths } from "../src/lib/format";
+import { formatMonth, getPastMonths } from "../src/lib/format";
 
 describe("getPastMonths", () => {
   // TC-017-01
@@ -28,5 +28,30 @@ describe("getPastMonths", () => {
 
     // Assert
     expect(months).toEqual(["2025-12", "2025-11", "2025-10"]);
+  });
+});
+
+describe("formatMonth", () => {
+  // TC-020-01
+  // Given the API month key "2026-08"
+  // When formatMonth is called
+  // Then it returns "August 2026"
+  it("formats an API month key as a German month name and year", () => {
+    // Arrange
+    const month = "2026-08";
+
+    // Act
+    const formatted = formatMonth(month);
+
+    // Assert
+    expect(formatted).toBe("August 2026");
+  });
+
+  it("formats a month whose German and English names differ", () => {
+    expect(formatMonth("2026-01")).toBe("Januar 2026");
+  });
+
+  it("formats a December key without slipping into the next year", () => {
+    expect(formatMonth("2025-12")).toBe("Dezember 2025");
   });
 });

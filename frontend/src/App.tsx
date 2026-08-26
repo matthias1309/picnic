@@ -7,9 +7,9 @@ import { Receipts } from "./pages/Receipts";
 import { Stats } from "./pages/Stats";
 
 const NAV_LINKS = [
-  { to: "/", label: "Home" },
-  { to: "/stats", label: "Stats" },
-  { to: "/receipts", label: "Receipts" },
+  { to: "/", label: "Übersicht" },
+  { to: "/stats", label: "Statistiken" },
+  { to: "/receipts", label: "Kassenbons" },
 ];
 
 export function LogoutButton() {
@@ -24,7 +24,7 @@ export function LogoutButton() {
       }
       className="rounded px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100"
     >
-      Logout
+      Abmelden
     </button>
   );
 }

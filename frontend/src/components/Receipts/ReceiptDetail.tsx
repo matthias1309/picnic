@@ -48,11 +48,11 @@ export function ReceiptDetail({ receiptId }: ReceiptDetailProps) {
   }
 
   if (isError || !data) {
-    return <ErrorMessage message="Failed to load receipt." onRetry={refetch} />;
+    return <ErrorMessage message="Kassenbon konnte nicht geladen werden." onRetry={refetch} />;
   }
 
   const handleDelete = () => {
-    if (!window.confirm("Delete this receipt? This cannot be undone.")) {
+    if (!window.confirm("Diesen Kassenbon löschen? Das kann nicht rückgängig gemacht werden.")) {
       return;
     }
     deleteReceipt.mutate(receiptId, {
@@ -64,7 +64,7 @@ export function ReceiptDetail({ receiptId }: ReceiptDetailProps) {
     <div data-testid="receipt-detail">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">
-          Receipt from {new Date(data.effective_date).toLocaleDateString("de-DE")}
+          Kassenbon vom {new Date(data.effective_date).toLocaleDateString("de-DE")}
         </h2>
         <button
           type="button"
@@ -72,7 +72,7 @@ export function ReceiptDetail({ receiptId }: ReceiptDetailProps) {
           disabled={deleteReceipt.isPending}
           className="rounded bg-red-50 px-3 py-1 text-sm text-red-600 hover:bg-red-100 disabled:opacity-50"
         >
-          Delete receipt
+          Kassenbon löschen
         </button>
       </div>
       <p className="text-sm text-gray-500">{data.from_address}</p>
@@ -92,7 +92,7 @@ export function ReceiptDetail({ receiptId }: ReceiptDetailProps) {
           </ul>
         </div>
       ))}
-      <p className="mt-4 text-right font-semibold">Total: {formatCents(data.total_cents)}</p>
+      <p className="mt-4 text-right font-semibold">Gesamt: {formatCents(data.total_cents)}</p>
     </div>
   );
 }

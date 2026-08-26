@@ -27,7 +27,7 @@ describe("Dashboard", () => {
     renderWithProviders(<Dashboard />);
 
     // Assert
-    expect(screen.getByRole("status", { name: /loading/i })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: /lädt/i })).toBeInTheDocument();
   });
 
   it("displays headline statistics from /api/stats/summary when loaded", async () => {
@@ -40,6 +40,11 @@ describe("Dashboard", () => {
     // Assert
     expect(await screen.findByText("1.234,56 €")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getByText("Gesamtausgaben")).toBeInTheDocument();
+    expect(screen.getByText("Kassenbons")).toBeInTheDocument();
+    expect(screen.getByText("Verschiedene Artikel")).toBeInTheDocument();
+    expect(screen.getByText("Durchschnittlicher Einkauf")).toBeInTheDocument();
+    expect(screen.getByText("Ausgaben diesen Monat")).toBeInTheDocument();
     expect(screen.getByText("17")).toBeInTheDocument();
     expect(screen.getByText("29,40 €")).toBeInTheDocument();
     expect(screen.getByText("55,00 €")).toBeInTheDocument();
@@ -53,7 +58,8 @@ describe("Dashboard", () => {
     renderWithProviders(<Dashboard />);
 
     // Assert
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Zusammenfassung konnte nicht geladen werden.");
   });
 
   // TC-005-06
@@ -69,7 +75,7 @@ describe("Dashboard", () => {
       .mockResolvedValueOnce(SUMMARY_FIXTURE);
 
     renderWithProviders(<Dashboard />);
-    const retryButton = await screen.findByRole("button", { name: /retry/i });
+    const retryButton = await screen.findByRole("button", { name: /erneut versuchen/i });
 
     // Act
     retryButton.click();

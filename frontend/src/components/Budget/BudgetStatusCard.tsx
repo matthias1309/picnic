@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { formatCents } from "../../lib/format";
+import { formatCents, formatMonth } from "../../lib/format";
 import type { BudgetStatus } from "../../types";
 
 interface BudgetStatusCardProps {
@@ -22,7 +22,7 @@ export function BudgetStatusCard({
       className={`rounded-lg p-4 shadow ${isOverBudget ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}
     >
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">Budget for {data.month}</p>
+        <p className="text-sm font-medium">Budget für {formatMonth(data.month)}</p>
         {action}
       </div>
       <p className="text-xl font-semibold">
@@ -35,11 +35,9 @@ export function BudgetStatusCard({
         />
       </div>
       {isOverBudget ? (
-        <p className="mt-2 text-sm font-medium">
-          Over budget by {formatCents(-data.remaining_cents)}
-        </p>
+        <p className="mt-2 text-sm font-medium">{formatCents(-data.remaining_cents)} über Budget</p>
       ) : (
-        <p className="mt-2 text-sm">Remaining: {formatCents(data.remaining_cents)}</p>
+        <p className="mt-2 text-sm">Verbleibend: {formatCents(data.remaining_cents)}</p>
       )}
     </div>
   );

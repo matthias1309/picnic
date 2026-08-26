@@ -1,6 +1,6 @@
 import { useQueries } from "@tanstack/react-query";
 import { fetchJson } from "../../api/client";
-import { getPastMonths } from "../../lib/format";
+import { formatMonth, getPastMonths } from "../../lib/format";
 import type { BudgetStatus } from "../../types";
 import { BudgetStatusCard } from "./BudgetStatusCard";
 
@@ -28,7 +28,7 @@ export function BudgetHistory() {
         if (result.isError || !result.data) {
           return (
             <p key={month} className="text-sm text-red-700">
-              Failed to load budget for {month}.
+              Budget für {formatMonth(month)} konnte nicht geladen werden.
             </p>
           );
         }
