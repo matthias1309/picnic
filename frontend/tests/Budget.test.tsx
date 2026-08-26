@@ -39,7 +39,11 @@ describe("BudgetWidget", () => {
     expect(widget).toHaveTextContent("300,00 €");
   });
 
-  it("applies a distinct visual style when over budget", async () => {
+  // TC-022-04
+  // Given spending within budget
+  // When the widget renders
+  // Then its state is exposed semantically as "within", not only by colour
+  it("exposes the within-budget state semantically", async () => {
     // Arrange
     vi.spyOn(apiClient, "fetchJson").mockResolvedValue(UNDER_BUDGET_FIXTURE);
 
@@ -48,7 +52,22 @@ describe("BudgetWidget", () => {
 
     // Assert
     const widget = await screen.findByTestId("budget-widget");
-    expect(widget.className).not.toContain("red");
+    expect(widget).toHaveAttribute("data-state", "within");
+  });
+
+  // TC-022-04
+  // Given spending over budget
+  // Then its state is exposed semantically as "over"
+  it("exposes the over-budget state semantically", async () => {
+    // Arrange
+    vi.spyOn(apiClient, "fetchJson").mockResolvedValue(OVER_BUDGET_FIXTURE);
+
+    // Act
+    renderWithProviders(<BudgetWidget />);
+
+    // Assert
+    const widget = await screen.findByTestId("budget-widget");
+    expect(widget).toHaveAttribute("data-state", "over");
   });
 
   it("shows the over-budget state distinctly when spend exceeds the budget", async () => {
@@ -60,7 +79,7 @@ describe("BudgetWidget", () => {
 
     // Assert
     const widget = await screen.findByTestId("budget-widget");
-    expect(widget.className).toContain("red");
+    expect(widget).toHaveAttribute("data-state", "over");
     expect(widget).toHaveTextContent("350,00 €");
     expect(widget).toHaveTextContent("über Budget");
   });

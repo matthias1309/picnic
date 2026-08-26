@@ -106,13 +106,13 @@ export function ProductCombobox({ products, selectedProductId, onSelect }: Produ
             setIsOpen(false);
           }
         }}
-        className="w-56 rounded border border-gray-300 px-2 py-1 text-sm"
+        className="w-56 rounded-lg border border-surface-border bg-surface px-3 py-1.5 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
       />
 
       {isListVisible && (
-        <div className="absolute z-10 mt-1 w-72 rounded border border-gray-200 bg-white shadow-lg">
+        <div className="absolute right-0 z-30 mt-1 w-72 overflow-hidden rounded-card border border-surface-border bg-surface shadow-card">
           {suggestions.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-gray-500">Kein Artikel gefunden.</p>
+            <p className="px-3 py-2.5 text-sm text-gray-500">Kein Artikel gefunden.</p>
           ) : (
             <ul id={listboxId} role="listbox" aria-label="Artikelvorschläge">
               {suggestions.map((product, index) => (
@@ -124,12 +124,14 @@ export function ProductCombobox({ products, selectedProductId, onSelect }: Produ
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => selectProduct(product)}
                   onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm ${
-                    index === highlightedIndex ? "bg-gray-100" : ""
+                  className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm ${
+                    index === highlightedIndex ? "bg-brand-50 text-brand-700" : "text-gray-900"
                   }`}
                 >
-                  <span>{product.name}</span>
-                  <span className="text-xs text-gray-500">{product.purchase_count}× gekauft</span>
+                  <span className="truncate">{product.name}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-gray-500">
+                    {product.purchase_count}× gekauft
+                  </span>
                 </li>
               ))}
             </ul>

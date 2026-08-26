@@ -35,12 +35,14 @@ describe("BudgetHistory", () => {
     const cards = await screen.findAllByTestId("budget-history-card");
     expect(cards).toHaveLength(12);
     expect(screen.queryByRole("button", { name: /budget bearbeiten/i })).not.toBeInTheDocument();
+    // TC-022-05 — the twelve months are grouped under one heading
+    expect(screen.getByRole("heading", { name: "Frühere Monate" })).toBeInTheDocument();
   });
 
   // TC-017-03
   // Given a historical month's spend exceeds its budget
   // When its card is rendered
-  // Then the card shows the over-budget color and "über Budget" text
+  // Then the card reports the over-budget state (TC-022-04: semantically, not by color)
   it("shows the over-budget style for a month that exceeded its budget", async () => {
     // Arrange
     vi.spyOn(apiClient, "fetchJson").mockImplementation((_path, params) =>
@@ -54,14 +56,14 @@ describe("BudgetHistory", () => {
 
     // Assert
     const cards = await screen.findAllByTestId("budget-history-card");
-    expect(cards[0].className).toContain("red");
+    expect(cards[0]).toHaveAttribute("data-state", "over");
     expect(cards[0]).toHaveTextContent("über Budget");
   });
 
   // TC-017-04
   // Given a historical month's spend is within budget
   // When its card is rendered
-  // Then the card shows the under-budget color and "Remaining" text
+  // Then the card reports the within-budget state (TC-022-04) and the remaining amount
   it("shows the under-budget style for a month within budget", async () => {
     // Arrange
     vi.spyOn(apiClient, "fetchJson").mockImplementation((_path, params) =>
@@ -73,7 +75,7 @@ describe("BudgetHistory", () => {
 
     // Assert
     const cards = await screen.findAllByTestId("budget-history-card");
-    expect(cards[0].className).not.toContain("red");
+    expect(cards[0]).toHaveAttribute("data-state", "within");
     expect(cards[0]).toHaveTextContent("Verbleibend");
   });
 
