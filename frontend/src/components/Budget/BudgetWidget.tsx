@@ -3,6 +3,8 @@ import { useBudget, useUpdateBudget } from "../../hooks/useStats";
 import { formatMonth, getCurrentMonth } from "../../lib/format";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { LoadingSpinner } from "../common/LoadingSpinner";
+import { Button } from "../ui/Button";
+import { Card } from "../ui/Card";
 import { BudgetStatusCard } from "./BudgetStatusCard";
 
 export function BudgetWidget() {
@@ -49,15 +51,14 @@ export function BudgetWidget() {
 
   if (isEditing) {
     return (
-      <div
-        data-testid="budget-widget"
-        className={`rounded-lg p-4 shadow ${isOverBudget ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}
+      <Card
+        testId="budget-widget"
+        data-state={isOverBudget ? "over" : "within"}
+        className={isOverBudget ? "bg-negative-50" : "bg-positive-50"}
       >
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">Budget für {formatMonth(data.month)}</p>
-        </div>
-        <div className="mt-2">
-          <label className="block text-sm font-medium" htmlFor="monthly-budget-input">
+        <p className="text-sm font-medium text-gray-700">Budget für {formatMonth(data.month)}</p>
+        <div className="mt-3">
+          <label className="block text-sm font-medium text-gray-700" htmlFor="monthly-budget-input">
             Monatsbudget (€)
           </label>
           <input
@@ -67,27 +68,19 @@ export function BudgetWidget() {
             step="0.01"
             value={draftValue}
             onChange={(event) => setDraftValue(event.target.value)}
-            className="mt-1 rounded border border-gray-300 px-2 py-1 text-gray-900"
+            className="mt-1 w-40 rounded-lg border border-surface-border bg-surface px-3 py-1.5 text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           />
-          {validationError && <p className="mt-1 text-sm font-medium">{validationError}</p>}
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={saveBudget}
-              className="rounded bg-gray-800 px-3 py-1 text-sm font-medium text-white"
-            >
-              Speichern
-            </button>
-            <button
-              type="button"
-              onClick={cancelEditing}
-              className="rounded border border-gray-300 px-3 py-1 text-sm font-medium"
-            >
+          {validationError && (
+            <p className="mt-1 text-sm font-medium text-negative-700">{validationError}</p>
+          )}
+          <div className="mt-3 flex gap-2">
+            <Button onClick={saveBudget}>Speichern</Button>
+            <Button variant="secondary" onClick={cancelEditing}>
               Abbrechen
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -96,9 +89,9 @@ export function BudgetWidget() {
       data={data}
       testId="budget-widget"
       action={
-        <button type="button" onClick={startEditing} className="text-sm font-medium underline">
+        <Button variant="ghost" onClick={startEditing}>
           Budget bearbeiten
-        </button>
+        </Button>
       }
     />
   );
