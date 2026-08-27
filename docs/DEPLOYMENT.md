@@ -352,8 +352,10 @@ host only — dev/staging keeps the path-based scheme unchanged (it has no
    (must live outside `/home`, per Uberspace's DocumentRoot rules):
    ```bash
    mkdir -p /var/www/virtual/mattmaxx/picnic.matt-maxx.de
-   printf 'RewriteBase /\n' > /var/www/virtual/mattmaxx/picnic.matt-maxx.de/.htaccess
    ```
+   No `.htaccess` is created by hand: every deploy writes one into this
+   directory containing the SPA deep-link fallback (REQ-023), and would
+   overwrite a hand-written file anyway.
 5. **Add the four lines** shown in the `.env` example above to
    `~/picnic/.env` on the production host, then run a normal deploy
    (`bash ~/picnic/scripts/deploy.sh`, or push to `main`).
@@ -361,8 +363,11 @@ host only — dev/staging keeps the path-based scheme unchanged (it has no
    ```bash
    curl https://picnic.matt-maxx.de/health         # → {"status":"ok"}
    curl https://picnic.matt-maxx.de/api/stats/summary  # → 401 (unauthenticated, expected)
+   curl -o /dev/null -w '%{http_code}\n' https://picnic.matt-maxx.de/stats
+   # → 200 (SPA fallback; a 404 means the .htaccess is missing, see REQ-023)
    ```
-   and open `https://picnic.matt-maxx.de/` in a browser.
+   and open `https://picnic.matt-maxx.de/` in a browser, navigate to
+   *Statistiken* and press reload — the page must come back, not a 404.
 
 Once this is done, `https://matt-maxx.de/picnic` and `/picnic-frontend/`
 stop working (the running backend no longer registers those paths, and the
