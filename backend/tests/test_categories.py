@@ -74,6 +74,15 @@ def test_rule_order_resolves_false_friends_and_overlaps():
     assert category_service.categorize("Tiefkühl-Pizza Margherita") == CategoryKey.READY_MEALS
     assert category_service.categorize("TK-Erbsen 750g") == CategoryKey.VEGETABLES
 
+    # Regression (CR-024 findings 1 and 2): a bare "eis" keyword also matched
+    # "Reis" and "Speiseöl", and the fruit keywords claimed juice and fruit
+    # yoghurt before the beverage/dairy rules could.
+    assert category_service.categorize("Basmati Reis 1kg") == CategoryKey.PANTRY
+    assert category_service.categorize("Speiseöl 1L") == CategoryKey.PANTRY
+    assert category_service.categorize("Apfelsaft 1L") == CategoryKey.BEVERAGES
+    assert category_service.categorize("Erdbeerjoghurt 150g") == CategoryKey.DAIRY
+    assert category_service.categorize("Erdbeermarmelade") == CategoryKey.PANTRY
+
 
 # TC-024-05
 # Given the product "Ahoi-Brause Sortiment" is uncategorised

@@ -1,3 +1,5 @@
+import type { CategoryKey } from "../types";
+
 /**
  * Chart colors, mirroring the Tailwind theme tokens.
  *
@@ -18,7 +20,7 @@ export const CHART_COLORS = {
  * sorted by spend, so a positional palette would recolour every category
  * whenever the ranking changes between periods (ARCH-024 Key Decision 6).
  */
-export const CATEGORY_COLORS: Record<string, string> = {
+export const CATEGORY_COLORS: Record<CategoryKey | "uncategorized", string> = {
   fruit: "#e8743b",
   vegetables: "#4aa564",
   dairy: "#2f6fdb",

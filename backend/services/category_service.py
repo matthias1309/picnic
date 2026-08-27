@@ -71,6 +71,17 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("fischstäbchen", CategoryKey.FISH),
     ("seife", CategoryKey.PERSONAL_CARE),
     ("spülmittel", CategoryKey.HOUSEHOLD),
+    # -- compounds whose first word belongs elsewhere ---------------------
+    # "Apfelsaft" is a beverage, not fruit; "Erdbeerjoghurt" is dairy, not
+    # fruit. These must precede the fruit keywords they start with.
+    ("saft", CategoryKey.BEVERAGES),
+    ("nektar", CategoryKey.BEVERAGES),
+    ("joghurt", CategoryKey.DAIRY),
+    ("quark", CategoryKey.DAIRY),
+    ("skyr", CategoryKey.DAIRY),
+    ("marmelade", CategoryKey.PANTRY),
+    ("konfitüre", CategoryKey.PANTRY),
+    ("eis am stiel", CategoryKey.SWEETS),
     # -- ready meals, before the frozen/storage keywords -----------------
     ("pizza", CategoryKey.READY_MEALS),
     ("fertiggericht", CategoryKey.READY_MEALS),
@@ -189,7 +200,9 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("bonbon", CategoryKey.SWEETS),
     ("gummibär", CategoryKey.SWEETS),
     ("chips", CategoryKey.SWEETS),
-    ("eis", CategoryKey.SWEETS),
+    ("eiscreme", CategoryKey.SWEETS),
+    ("speiseeis", CategoryKey.SWEETS),
+    ("wassereis", CategoryKey.SWEETS),
     ("kuchen", CategoryKey.SWEETS),
     ("riegel", CategoryKey.SWEETS),
     ("waffel", CategoryKey.SWEETS),

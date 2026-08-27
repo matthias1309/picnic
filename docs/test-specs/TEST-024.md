@@ -80,11 +80,28 @@ Then it returns CategoryKey.READY_MEALS, not FROZEN
 
 When categorize is called with "TK-Erbsen 750g"
 Then it returns CategoryKey.VEGETABLES, not FROZEN
+
+When categorize is called with "Basmati Reis 1kg" or "Speiseöl 1L"
+Then it returns CategoryKey.PANTRY, not SWEETS
+
+When categorize is called with "Apfelsaft 1L"
+Then it returns CategoryKey.BEVERAGES, not FRUIT
+
+When categorize is called with "Erdbeerjoghurt 150g"
+Then it returns CategoryKey.DAIRY, not FRUIT
+
+When categorize is called with "Erdbeermarmelade"
+Then it returns CategoryKey.PANTRY, not FRUIT
 ```
 
 **Notes:** This is the executable form of Key Decision 3 (product type beats
 storage form). Each case pins one ordering constraint in `CATEGORY_RULES`;
 reordering the table must break this test.
+
+The last four groups are regressions added during CR-024: a bare "eis"
+keyword silently claimed "Reis" and "Speiseöl", and the fruit keywords claimed
+juice, fruit yoghurt and jam because they preceded the beverage/dairy/pantry
+rules for those compounds.
 
 ---
 

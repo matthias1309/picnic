@@ -145,7 +145,7 @@ def update_product_category(
     return ProductOut(
         id=product.id,
         name=product.name,
-        purchase_count=len(product.receipt_items),
+        purchase_count=receipt_service.count_product_purchases(db, product.id),
         category_key=product.category_key,
     )
 

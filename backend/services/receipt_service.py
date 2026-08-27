@@ -192,6 +192,17 @@ def list_products(db: Session) -> list[tuple[Product, int]]:
     )
 
 
+def count_product_purchases(db: Session, product_id: int) -> int:
+    """Return how many receipt items reference a product.
+
+    A COUNT query rather than len(product.receipt_items): the relationship
+    would load every line item just to size the list.
+    """
+    return (
+        db.query(func.count(ReceiptItem.id)).filter(ReceiptItem.product_id == product_id).scalar()
+    )
+
+
 def delete_receipt(db: Session, receipt_id: int) -> bool:
     """Delete a receipt, its items, and its price history (AC-009-04).
 
