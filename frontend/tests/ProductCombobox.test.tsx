@@ -5,9 +5,9 @@ import { ProductCombobox } from "../src/components/Charts/ProductCombobox";
 import type { ProductOut } from "../src/types";
 
 const PRODUCTS: ProductOut[] = [
-  { id: 1, name: "Bananen", purchase_count: 30 },
-  { id: 2, name: "Bio-Bananen", purchase_count: 2 },
-  { id: 3, name: "Milch", purchase_count: 12 },
+  { id: 1, name: "Bananen", purchase_count: 30, category_key: null },
+  { id: 2, name: "Bio-Bananen", purchase_count: 2, category_key: null },
+  { id: 3, name: "Milch", purchase_count: 12, category_key: null },
 ];
 
 function renderCombobox(selectedProductId: number | null = null) {

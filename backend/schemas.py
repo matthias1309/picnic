@@ -8,6 +8,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from backend.services.category_service import CategoryKey
+
 
 class LoginRequest(BaseModel):
     """Request body for POST /api/auth/login (AC-006-01, AC-006-02)."""
@@ -65,11 +67,32 @@ class ReceiptDetail(BaseModel):
 
 
 class ProductOut(BaseModel):
-    """A product with its purchase count (AC-003-03)."""
+    """A product with its purchase count and category (AC-003-03, AC-024-03)."""
 
     id: int
     name: str
     purchase_count: int
+    category_key: CategoryKey | None = None
+
+
+class CategoryOut(BaseModel):
+    """One entry of the fixed category list (AC-024-06)."""
+
+    key: CategoryKey
+    label: str
+
+
+class ProductCategoryUpdate(BaseModel):
+    """Request body for PUT /api/products/{id}/category (AC-024-03, AC-024-10)."""
+
+    category_key: CategoryKey
+
+
+class CategorySpending(BaseModel):
+    """Total spend for one category; key None means "not assigned" (AC-024-07)."""
+
+    category_key: CategoryKey | None
+    total_cents: int
 
 
 class PriceHistoryPoint(BaseModel):

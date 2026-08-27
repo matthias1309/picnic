@@ -7,8 +7,10 @@ Verifies: REQ-004 (AC-004-01, AC-004-05)
 
 from datetime import date, datetime
 
+
 from backend.models import Product, Receipt, ReceiptItem
 from backend.services import stats_service
+from backend.services.category_service import CategoryKey
 
 
 def _make_receipt(message_id: str, received_date: datetime) -> Receipt:
@@ -142,3 +144,147 @@ def test_spending_over_time_on_empty_database_returns_empty_list(db_session):
     buckets = stats_service.get_spending_over_time(db_session, granularity="month")
 
     assert buckets == []
+
+
+# --- TEST-024: spending by category (ARCH-024) -----------------------------
+
+
+def _seed_categorized(db_session):
+    """Two categorized products and one uncategorized, all in 2026-06."""
+    beverages = Product(name="Apfelsaft 1L", category_key=CategoryKey.BEVERAGES)
+    dairy = Product(name="Bio Vollmilch 1L", category_key=CategoryKey.DAIRY)
+    unknown = Product(name="Ahoi-Brause Sortiment")
+    receipt = _make_receipt("cat@picnic.app", datetime(2026, 6, 10, 12, 0))
+    db_session.add_all(
+        [
+            receipt,
+            _make_item(receipt, beverages, quantity=2, unit_price_cents=500),
+            _make_item(receipt, dairy, quantity=1, unit_price_cents=2500),
+            _make_item(receipt, unknown, quantity=1, unit_price_cents=150),
+        ]
+    )
+    db_session.commit()
+    return receipt
+
+
+# TC-024-13
+# Given receipts exist with items in "beverages" (10,00 €) and "dairy" (25,00 €)
+# When stats_service.get_spending_by_category(db) is called
+# Then two buckets are returned
+# And the first bucket is ("dairy", 2500)
+# And the second bucket is ("beverages", 1000)
+def test_spending_by_category_returns_buckets_highest_first(db_session):
+    # Arrange
+    beverages = Product(name="Apfelsaft 1L", category_key=CategoryKey.BEVERAGES)
+    dairy = Product(name="Bio Vollmilch 1L", category_key=CategoryKey.DAIRY)
+    receipt = _make_receipt("cat1@picnic.app", datetime(2026, 6, 10, 12, 0))
+    db_session.add_all(
+        [
+            receipt,
+            _make_item(receipt, beverages, quantity=2, unit_price_cents=500),
+            _make_item(receipt, dairy, quantity=1, unit_price_cents=2500),
+        ]
+    )
+    db_session.commit()
+
+    # Act
+    buckets = stats_service.get_spending_by_category(db_session)
+
+    # Assert
+    assert buckets == [(CategoryKey.DAIRY, 2500), (CategoryKey.BEVERAGES, 1000)]
+
+
+# TC-024-14
+# Given receipts exist with items of a product whose category_key is None
+# When stats_service.get_spending_by_category(db) is called
+# Then one bucket has category_key None
+# And its total_cents is the sum of those items' line totals
+def test_spending_by_category_reports_uncategorized_items_separately(db_session):
+    # Arrange
+    _seed_categorized(db_session)
+
+    # Act
+    buckets = dict(stats_service.get_spending_by_category(db_session))
+
+    # Assert
+    assert buckets[None] == 150
+
+
+# TC-024-15
+# Given receipts exist across several categories, including uncategorised items
+# When stats_service.get_spending_by_category(db) is called
+# Then the sum of all bucket totals equals the sum of all buckets from
+#   stats_service.get_spending_over_time(db, "month")
+def test_spending_by_category_totals_match_overall_spending(db_session):
+    # Arrange
+    _seed_categorized(db_session)
+
+    # Act
+    by_category = stats_service.get_spending_by_category(db_session)
+    over_time = stats_service.get_spending_over_time(db_session, granularity="month")
+
+    # Assert — catches a join that drops or duplicates line items
+    assert sum(total for _, total in by_category) == sum(total for _, total in over_time)
+
+
+# TC-024-16
+# Given a receipt with an effective date in 2026-05 and one in 2026-06
+# When get_spending_by_category(db, from_date=2026-06-01, to_date=2026-06-30) is called
+# Then only the June receipt's items are counted
+def test_spending_by_category_respects_the_requested_period(db_session):
+    # Arrange — the May receipt was *received* in June, so only the delivery
+    # date (REQ-018 effective_date) can tell the two apart.
+    dairy = Product(name="Bio Vollmilch 1L", category_key=CategoryKey.DAIRY)
+    may_receipt = _make_receipt("may@picnic.app", datetime(2026, 6, 1, 8, 0))
+    may_receipt.delivery_date = date(2026, 5, 28)
+    june_receipt = _make_receipt("june@picnic.app", datetime(2026, 6, 15, 8, 0))
+    june_receipt.delivery_date = date(2026, 6, 15)
+    db_session.add_all(
+        [
+            may_receipt,
+            june_receipt,
+            _make_item(may_receipt, dairy, quantity=1, unit_price_cents=1000),
+            _make_item(june_receipt, dairy, quantity=1, unit_price_cents=2500),
+        ]
+    )
+    db_session.commit()
+
+    # Act
+    buckets = stats_service.get_spending_by_category(
+        db_session, from_date=date(2026, 6, 1), to_date=date(2026, 6, 30)
+    )
+
+    # Assert
+    assert buckets == [(CategoryKey.DAIRY, 2500)]
+
+
+# TC-024-17
+# Given a month contains items in "beverages" (10,00 €) and "dairy" (25,00 €)
+# When get_spending_over_time(db, "month", category=CategoryKey.BEVERAGES) is called
+# Then the month's bucket total is 1000
+def test_spending_over_time_can_be_filtered_by_category(db_session):
+    # Arrange
+    _seed_categorized(db_session)
+
+    # Act
+    buckets = stats_service.get_spending_over_time(
+        db_session, granularity="month", category=CategoryKey.BEVERAGES
+    )
+
+    # Assert
+    assert buckets == [("2026-06", 1000)]
+
+
+# TC-024-18
+# Given products exist in several categories
+# When get_top_items(db, limit=10, category=CategoryKey.BEVERAGES) is called
+# Then only products of the "beverages" category are returned
+def test_top_items_can_be_filtered_by_category(db_session):
+    # Arrange
+    _seed_categorized(db_session)
+
+    # Act
+    top_items = stats_service.get_top_items(db_session, limit=10, category=CategoryKey.BEVERAGES)
+
+    # Assert
+    assert [product.name for product, _, _ in top_items] == ["Apfelsaft 1L"]

@@ -29,3 +29,21 @@ export function searchProducts(products: ProductOut[], query: string): ProductOu
     .filter((product) => foldForSearch(product.name).includes(foldedQuery))
     .sort((a, b) => b.purchase_count - a.purchase_count || a.name.localeCompare(b.name, "de"));
 }
+
+/**
+ * Products whose name contains `query`, ordered by name.
+ *
+ * Unlike `searchProducts`, an empty query lists *everything*: the article list
+ * exists to work through the whole catalogue, above all the items the
+ * categorisation backfill left unassigned, so hiding the list until something
+ * is typed would defeat its purpose.
+ */
+export function filterProducts(products: ProductOut[], query: string): ProductOut[] {
+  const foldedQuery = foldForSearch(query.trim());
+  const matching =
+    foldedQuery === ""
+      ? products
+      : products.filter((product) => foldForSearch(product.name).includes(foldedQuery));
+
+  return [...matching].sort((a, b) => a.name.localeCompare(b.name, "de"));
+}

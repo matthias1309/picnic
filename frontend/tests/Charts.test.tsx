@@ -8,7 +8,9 @@ import { useUiStore } from "../src/store/useUiStore";
 import { renderWithProviders } from "./test-utils";
 import type { PriceTrend, ProductOut, SpendingOverTime, TopItem } from "../src/types";
 
-const PRODUCTS_FIXTURE: ProductOut[] = [{ id: 1, name: "Bananas", purchase_count: 5 }];
+const PRODUCTS_FIXTURE: ProductOut[] = [
+  { id: 1, name: "Bananas", purchase_count: 5, category_key: null },
+];
 
 const PRICE_TREND_FIXTURE: PriceTrend = {
   product_id: 1,

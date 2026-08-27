@@ -3,7 +3,7 @@ import { searchProducts } from "../src/lib/product-search";
 import type { ProductOut } from "../src/types";
 
 function product(name: string, purchaseCount: number, id = name.length): ProductOut {
-  return { id, name, purchase_count: purchaseCount };
+  return { id, name, purchase_count: purchaseCount, category_key: null };
 }
 
 describe("searchProducts", () => {

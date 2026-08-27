@@ -7,7 +7,9 @@ Verifies: REQ-003 (AC-003-01, AC-003-02, AC-003-03, AC-003-04, AC-003-05, AC-003
 
 from datetime import date, datetime
 
+
 from backend.models import PriceHistory, Product, Receipt, ReceiptItem
+from backend.services.category_service import CategoryKey
 
 BASE = "/picnic/api"
 
@@ -495,3 +497,87 @@ def test_delete_receipt_not_found_returns_404(client):
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Receipt not found"}
+
+
+# --- TEST-024: category endpoints (ARCH-024) -------------------------------
+
+
+# TC-024-09
+# Given the client is authenticated
+# When it requests GET /picnic/api/categories
+# Then a 200 response is returned
+# And the body contains one entry per CategoryKey
+# And every entry has a non-empty "key" and a non-empty German "label"
+def test_get_categories_returns_the_fixed_list(client):
+    # Arrange / Act
+    response = client.get(f"{BASE}/categories")
+
+    # Assert
+    assert response.status_code == 200
+    body = response.json()
+    assert {entry["key"] for entry in body} == {key.value for key in CategoryKey}
+    assert all(entry["label"] for entry in body)
+
+
+# TC-024-10
+# Given an uncategorised product exists
+# When the client sends PUT /picnic/api/products/{id}/category
+#   with body {"category_key": "sweets"}
+# Then a 200 response is returned
+# And the response body has category_key "sweets"
+# And the stored product has category_is_manual True
+def test_put_product_category_persists_a_manual_assignment(client, db_session):
+    # Arrange
+    product = Product(name="Ahoi-Brause Sortiment")
+    db_session.add(product)
+    db_session.commit()
+
+    # Act
+    response = client.put(f"{BASE}/products/{product.id}/category", json={"category_key": "sweets"})
+
+    # Assert
+    assert response.status_code == 200
+    assert response.json()["category_key"] == "sweets"
+    db_session.refresh(product)
+    assert product.category_is_manual is True
+
+
+# TC-024-11
+# Given no product with id 9999 exists
+# When the client sends PUT /picnic/api/products/9999/category
+#   with body {"category_key": "sweets"}
+# Then a 404 response is returned
+def test_put_product_category_returns_404_for_unknown_product(client):
+    # Arrange / Act
+    response = client.put(f"{BASE}/products/9999/category", json={"category_key": "sweets"})
+
+    # Assert
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Product not found"}
+
+
+# TC-024-12
+# Given a product exists with category_key None
+# When the client sends PUT /picnic/api/products/{id}/category
+#   with body {"category_key": "nonsense"}
+# Then a 422 response is returned
+# And the product's category_key is still None
+# When the client requests GET /picnic/api/stats/spending?category=nonsense
+# Then a 422 response is returned
+def test_unknown_category_key_is_rejected(client, db_session):
+    # Arrange
+    product = Product(name="Ahoi-Brause Sortiment")
+    db_session.add(product)
+    db_session.commit()
+
+    # Act
+    put_response = client.put(
+        f"{BASE}/products/{product.id}/category", json={"category_key": "nonsense"}
+    )
+    query_response = client.get(f"{BASE}/stats/spending", params={"category": "nonsense"})
+
+    # Assert
+    assert put_response.status_code == 422
+    assert query_response.status_code == 422
+    db_session.refresh(product)
+    assert product.category_key is None

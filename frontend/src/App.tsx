@@ -2,6 +2,7 @@ import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Button } from "./components/ui/Button";
 import { useCurrentUser, useLogout } from "./hooks/useAuth";
+import { Articles } from "./pages/Articles";
 import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { Receipts } from "./pages/Receipts";
@@ -11,6 +12,7 @@ const NAV_LINKS = [
   { to: "/", label: "Übersicht" },
   { to: "/stats", label: "Statistiken" },
   { to: "/receipts", label: "Kassenbons" },
+  { to: "/articles", label: "Artikel" },
 ];
 
 export function LogoutButton() {
@@ -68,6 +70,14 @@ export function App() {
             element={
               <ProtectedRoute>
                 <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/articles"
+            element={
+              <ProtectedRoute>
+                <Articles />
               </ProtectedRoute>
             }
           />

@@ -16,10 +16,13 @@ from backend.schemas import (
     BudgetSettingOut,
     BudgetSettingUpdate,
     BudgetStatus,
+    CategoryOut,
+    CategorySpending,
     PaginatedReceipts,
     PriceHistoryPoint,
     PriceTrend,
     PriceTrendPoint,
+    ProductCategoryUpdate,
     ProductOut,
     ProductPriceHistory,
     ReceiptDetail,
@@ -30,7 +33,13 @@ from backend.schemas import (
     SummaryStats,
     TopItem,
 )
-from backend.services import budget_service, receipt_service, stats_service
+from backend.services import (
+    budget_service,
+    category_service,
+    receipt_service,
+    stats_service,
+)
+from backend.services.category_service import CategoryKey
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
@@ -104,9 +113,41 @@ def delete_receipt(receipt_id: int, db: Session = Depends(get_db)) -> Response:
 def list_products(db: Session = Depends(get_db)) -> list[ProductOut]:
     """List all products with how many times each was purchased."""
     return [
-        ProductOut(id=product.id, name=product.name, purchase_count=purchase_count)
+        ProductOut(
+            id=product.id,
+            name=product.name,
+            purchase_count=purchase_count,
+            category_key=product.category_key,
+        )
         for product, purchase_count in receipt_service.list_products(db)
     ]
+
+
+@api_router.get("/categories", response_model=list[CategoryOut])
+def list_categories() -> list[CategoryOut]:
+    """List the fixed set of product categories (AC-024-06)."""
+    return [
+        CategoryOut(key=key, label=label) for key, label in category_service.CATEGORY_LABELS.items()
+    ]
+
+
+@api_router.put("/products/{product_id}/category", response_model=ProductOut)
+def update_product_category(
+    product_id: int,
+    payload: ProductCategoryUpdate,
+    db: Session = Depends(get_db),
+) -> ProductOut:
+    """Assign a product's category by hand (AC-024-03, AC-024-10)."""
+    product = category_service.set_product_category(db, product_id, payload.category_key)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return ProductOut(
+        id=product.id,
+        name=product.name,
+        purchase_count=receipt_service.count_product_purchases(db, product.id),
+        category_key=product.category_key,
+    )
 
 
 @api_router.get("/products/{product_id}/price-history", response_model=ProductPriceHistory)
@@ -135,10 +176,11 @@ def get_spending(
     granularity: Literal["week", "month"] = "month",
     from_date: date | None = None,
     to_date: date | None = None,
+    category: CategoryKey | None = None,
     db: Session = Depends(get_db),
 ) -> SpendingOverTime:
-    """Get total spending grouped by week or month (AC-004-01)."""
-    buckets = stats_service.get_spending_over_time(db, granularity, from_date, to_date)
+    """Get total spending grouped by week or month (AC-004-01, AC-024-09)."""
+    buckets = stats_service.get_spending_over_time(db, granularity, from_date, to_date, category)
     return SpendingOverTime(
         granularity=granularity,
         buckets=[SpendingBucket(period=period, total_cents=total) for period, total in buckets],
@@ -148,9 +190,10 @@ def get_spending(
 @api_router.get("/stats/top-items", response_model=list[TopItem])
 def get_top_items(
     limit: int = Query(DEFAULT_TOP_ITEMS_LIMIT, ge=1, le=MAX_PAGE_SIZE),
+    category: CategoryKey | None = None,
     db: Session = Depends(get_db),
 ) -> list[TopItem]:
-    """Get the most frequently purchased products (AC-004-02)."""
+    """Get the most frequently purchased products (AC-004-02, AC-024-09)."""
     return [
         TopItem(
             product_id=product.id,
@@ -158,7 +201,9 @@ def get_top_items(
             total_quantity=total_quantity,
             total_spend_cents=total_spend_cents,
         )
-        for product, total_quantity, total_spend_cents in stats_service.get_top_items(db, limit)
+        for product, total_quantity, total_spend_cents in stats_service.get_top_items(
+            db, limit, category
+        )
     ]
 
 
@@ -216,6 +261,21 @@ def get_budget(
         spent_cents=spent_cents,
         remaining_cents=budget_cents - spent_cents,
     )
+
+
+@api_router.get("/stats/by-category", response_model=list[CategorySpending])
+def get_spending_by_category(
+    from_date: date | None = None,
+    to_date: date | None = None,
+    db: Session = Depends(get_db),
+) -> list[CategorySpending]:
+    """Get total spend per category, highest first (AC-024-07, AC-024-08)."""
+    return [
+        CategorySpending(category_key=category_key, total_cents=total_cents)
+        for category_key, total_cents in stats_service.get_spending_by_category(
+            db, from_date, to_date
+        )
+    ]
 
 
 @api_router.get("/stats/summary", response_model=SummaryStats)

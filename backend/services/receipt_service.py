@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from backend.imap.parser import ParseError, ParsedReceipt, ReceiptParser
 from backend.models import PriceHistory, Product, Receipt, ReceiptItem
+from backend.services import category_service
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ def _get_or_create_product(db: Session, name: str) -> Product:
     """Look up a product by its exact name, creating it if it does not exist."""
     product = db.query(Product).filter(Product.name == name).first()
     if product is None:
-        product = Product(name=name)
+        product = Product(name=name, category_key=category_service.categorize(name))
         db.add(product)
         db.flush()
     return product
@@ -188,6 +189,17 @@ def list_products(db: Session) -> list[tuple[Product, int]]:
         .group_by(Product.id)
         .order_by(Product.name)
         .all()
+    )
+
+
+def count_product_purchases(db: Session, product_id: int) -> int:
+    """Return how many receipt items reference a product.
+
+    A COUNT query rather than len(product.receipt_items): the relationship
+    would load every line item just to size the list.
+    """
+    return (
+        db.query(func.count(ReceiptItem.id)).filter(ReceiptItem.product_id == product_id).scalar()
     )
 
 

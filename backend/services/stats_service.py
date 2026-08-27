@@ -11,6 +11,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.models import PriceHistory, Product, Receipt, ReceiptItem
+from backend.services.category_service import CategoryKey
 
 WEEK_PERIOD_EXPR = func.date(Receipt.effective_date, "weekday 0", "-6 days")
 MONTH_PERIOD_EXPR = func.strftime("%Y-%m", Receipt.effective_date)
@@ -32,8 +33,9 @@ def get_spending_over_time(
     granularity: str,
     from_date: date | None = None,
     to_date: date | None = None,
+    category: CategoryKey | None = None,
 ) -> list[tuple[str, int]]:
-    """Return total spend per period, ordered ascending (AC-004-01, AC-004-06)."""
+    """Return total spend per period, ordered ascending (AC-004-01, AC-004-06, AC-024-09)."""
     period_expr = WEEK_PERIOD_EXPR if granularity == "week" else MONTH_PERIOD_EXPR
 
     query = db.query(period_expr.label("period"), func.sum(ReceiptItem.line_total_cents)).join(
@@ -43,23 +45,60 @@ def get_spending_over_time(
         query = query.filter(func.date(Receipt.effective_date) >= from_date)
     if to_date is not None:
         query = query.filter(func.date(Receipt.effective_date) <= to_date)
+    if category is not None:
+        query = query.join(Product, ReceiptItem.product_id == Product.id).filter(
+            Product.category_key == category
+        )
 
     return query.group_by("period").order_by("period").all()
 
 
-def get_top_items(db: Session, limit: int) -> list[tuple[Product, int, int]]:
-    """Return the most frequently purchased products, ranked by quantity (AC-004-02)."""
+def get_top_items(
+    db: Session, limit: int, category: CategoryKey | None = None
+) -> list[tuple[Product, int, int]]:
+    """Return the most frequently purchased products, ranked by quantity (AC-004-02,
+    AC-024-09)."""
     total_quantity = func.sum(ReceiptItem.quantity)
     total_spend_cents = func.sum(ReceiptItem.line_total_cents)
 
+    query = db.query(Product, total_quantity, total_spend_cents).join(
+        ReceiptItem, ReceiptItem.product_id == Product.id
+    )
+    if category is not None:
+        query = query.filter(Product.category_key == category)
+
     return (
-        db.query(Product, total_quantity, total_spend_cents)
-        .join(ReceiptItem, ReceiptItem.product_id == Product.id)
-        .group_by(Product.id)
+        query.group_by(Product.id)
         .order_by(total_quantity.desc(), total_spend_cents.desc())
         .limit(limit)
         .all()
     )
+
+
+def get_spending_by_category(
+    db: Session,
+    from_date: date | None = None,
+    to_date: date | None = None,
+) -> list[tuple[str | None, int]]:
+    """Return total spend per category, highest first (AC-024-07, AC-024-08).
+
+    Products without a category are grouped into their own bucket, keyed None.
+    Every receipt item belongs to exactly one product, so the buckets sum to
+    the same total as `get_spending_over_time` over the same range.
+    """
+    total = func.sum(ReceiptItem.line_total_cents)
+
+    query = (
+        db.query(Product.category_key, total)
+        .join(ReceiptItem, ReceiptItem.product_id == Product.id)
+        .join(Receipt, ReceiptItem.receipt_id == Receipt.id)
+    )
+    if from_date is not None:
+        query = query.filter(func.date(Receipt.effective_date) >= from_date)
+    if to_date is not None:
+        query = query.filter(func.date(Receipt.effective_date) <= to_date)
+
+    return query.group_by(Product.category_key).order_by(total.desc()).all()
 
 
 def get_price_trend(
