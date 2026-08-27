@@ -114,7 +114,11 @@ if command -v node &> /dev/null; then
     rm -rf "$FRONTEND_PUBLISH_DIR"
     mkdir -p "$FRONTEND_PUBLISH_DIR"
     cp -r "$FRONTEND_BUILD"/. "$FRONTEND_PUBLISH_DIR/"
-    echo "✓ Frontend published to $FRONTEND_PUBLISH_DIR"
+
+    # Written after the copy so the rm -rf/cp above cannot clobber it, and any
+    # stale hand-written .htaccess is replaced (REQ-021).
+    write_spa_fallback "$FRONTEND_PUBLISH_DIR" "$VITE_BASE_PATH"
+    echo "✓ Frontend published to $FRONTEND_PUBLISH_DIR (SPA fallback written)"
 else
     echo "⚠ Node.js not found, skipping frontend build"
     echo "  (Frontend must be pre-built by GitHub Actions)"
