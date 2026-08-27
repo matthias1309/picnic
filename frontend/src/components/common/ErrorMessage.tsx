@@ -1,3 +1,5 @@
+import { Button } from "../ui/Button";
+
 interface ErrorMessageProps {
   message?: string;
   onRetry?: () => void;
@@ -8,16 +10,15 @@ export function ErrorMessage({
   onRetry,
 }: ErrorMessageProps) {
   return (
-    <div role="alert" className="rounded-md bg-red-50 p-4 text-red-700">
+    <div
+      role="alert"
+      className="rounded-card border border-negative-600/20 bg-negative-50 p-4 text-sm text-negative-700"
+    >
       <p>{message}</p>
       {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-2 rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
-        >
+        <Button variant="danger" onClick={onRetry} className="mt-3">
           Erneut versuchen
-        </button>
+        </Button>
       )}
     </div>
   );

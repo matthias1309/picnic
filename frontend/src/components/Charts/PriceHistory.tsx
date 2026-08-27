@@ -10,18 +10,23 @@ import {
 import { useProducts } from "../../hooks/useProducts";
 import { usePriceTrend } from "../../hooks/useStats";
 import { useUiStore } from "../../store/useUiStore";
+import { CHART_COLORS } from "../../lib/chart-theme";
 import { formatCents, rangeToFromDate } from "../../lib/format";
 import type { PriceHistoryRange } from "../../types";
 import { EmptyState } from "../common/EmptyState";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { LoadingSpinner } from "../common/LoadingSpinner";
+import { Card } from "../ui/Card";
+import { SectionHeader } from "../ui/SectionHeader";
+import { ToggleGroup } from "../ui/ToggleGroup";
+import { ProductCombobox } from "./ProductCombobox";
 
-const RANGE_LABELS: Record<PriceHistoryRange, string> = {
-  "3m": "3 Mon.",
-  "6m": "6 Mon.",
-  "12m": "12 Mon.",
-  all: "Gesamt",
-};
+const RANGE_OPTIONS: readonly { value: PriceHistoryRange; label: string }[] = [
+  { value: "3m", label: "3 Mon." },
+  { value: "6m", label: "6 Mon." },
+  { value: "12m", label: "12 Mon." },
+  { value: "all", label: "Gesamt" },
+];
 
 export function PriceHistory() {
   const products = useProducts();
@@ -34,42 +39,25 @@ export function PriceHistory() {
   const priceTrend = usePriceTrend(selectedProductId, fromDate);
 
   return (
-    <div>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Preisverlauf</h2>
-        <div className="flex items-center gap-2">
-          <select
-            aria-label="Artikel auswählen"
-            value={selectedProductId ?? ""}
-            onChange={(event) =>
-              setSelectedProductId(event.target.value ? Number(event.target.value) : null)
-            }
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          >
-            <option value="">Artikel auswählen</option>
-            {products.data?.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
-              </option>
-            ))}
-          </select>
-          <div role="group" aria-label="Zeitraum" className="flex gap-1">
-            {(Object.keys(RANGE_LABELS) as PriceHistoryRange[]).map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setRange(option)}
-                aria-pressed={range === option}
-                className={`rounded px-2 py-1 text-sm ${
-                  range === option ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-700"
-                }`}
-              >
-                {RANGE_LABELS[option]}
-              </button>
-            ))}
+    <Card>
+      <SectionHeader
+        title="Preisverlauf"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <ProductCombobox
+              products={products.data ?? []}
+              selectedProductId={selectedProductId}
+              onSelect={setSelectedProductId}
+            />
+            <ToggleGroup
+              label="Zeitraum"
+              options={RANGE_OPTIONS}
+              value={range}
+              onChange={setRange}
+            />
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {selectedProductId === null && (
         <EmptyState message="Wähle einen Artikel, um seinen Preisverlauf zu sehen." />
@@ -87,24 +75,43 @@ export function PriceHistory() {
       )}
       {priceTrend.data && priceTrend.data.points.length > 0 && (
         <>
-          <div className="mb-2 flex gap-4 text-sm text-gray-600">
-            <span>Min. {formatCents(priceTrend.data.min_price_cents)}</span>
-            <span>Max. {formatCents(priceTrend.data.max_price_cents)}</span>
-            <span>Ø {formatCents(priceTrend.data.avg_price_cents)}</span>
+          <div className="mb-4 flex flex-wrap gap-2 text-sm">
+            <span className="rounded-lg bg-surface-muted px-3 py-1 tabular-nums text-gray-700">
+              Min. {formatCents(priceTrend.data.min_price_cents)}
+            </span>
+            <span className="rounded-lg bg-surface-muted px-3 py-1 tabular-nums text-gray-700">
+              Max. {formatCents(priceTrend.data.max_price_cents)}
+            </span>
+            <span className="rounded-lg bg-surface-muted px-3 py-1 tabular-nums text-gray-700">
+              Ø {formatCents(priceTrend.data.avg_price_cents)}
+            </span>
           </div>
-          <div data-testid="price-history-chart" style={{ width: "100%", height: 250 }}>
+          <div data-testid="price-history-chart" style={{ width: "100%", height: 260 }}>
             <ResponsiveContainer>
               <LineChart data={priceTrend.data.points}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis tickFormatter={(value: number) => formatCents(value)} />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} vertical={false} />
+                <XAxis dataKey="date" stroke={CHART_COLORS.axis} tickLine={false} fontSize={12} />
+                <YAxis
+                  tickFormatter={(value: number) => formatCents(value)}
+                  stroke={CHART_COLORS.axis}
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
+                  width={80}
+                />
                 <Tooltip formatter={(value: number) => formatCents(value)} />
-                <Line type="monotone" dataKey="unit_price_cents" stroke="#2563eb" dot={false} />
+                <Line
+                  type="monotone"
+                  dataKey="unit_price_cents"
+                  stroke={CHART_COLORS.series}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: CHART_COLORS.series }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </>
       )}
-    </div>
+    </Card>
   );
 }

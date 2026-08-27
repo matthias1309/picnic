@@ -3,5 +3,5 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ message }: EmptyStateProps) {
-  return <p className="py-8 text-center text-gray-500">{message}</p>;
+  return <p className="py-10 text-center text-sm text-gray-500">{message}</p>;
 }
