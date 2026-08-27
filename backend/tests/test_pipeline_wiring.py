@@ -31,6 +31,13 @@ def _needs(job: dict) -> list[str]:
     return [needs] if isinstance(needs, str) else list(needs)
 
 
+def _step(job: dict, name: str) -> dict:
+    for step in job["steps"]:
+        if step.get("name") == name:
+            return step
+    raise AssertionError(f"no step named {name!r} in job")
+
+
 # TC-015-01
 def test_deploy_dev_is_bound_to_main_and_development_environment(jobs):
     deploy_dev = jobs["deploy-dev"]
@@ -61,3 +68,12 @@ def test_prod_deploy_is_bound_to_main_and_production_environment(jobs):
 
     assert _environment_name(deploy_prod) == "production"
     assert "refs/heads/main" in deploy_prod["if"]
+
+
+# TC-025-09
+# Given the "Deploy candidate to Dev Uberspace" step in the deploy-dev job
+# Then it has no continue-on-error: true
+def test_dev_deploy_step_does_not_swallow_a_failing_deploy_script(jobs):
+    deploy_step = _step(jobs["deploy-dev"], "Deploy candidate to Dev Uberspace")
+
+    assert deploy_step.get("continue-on-error") is not True

@@ -91,11 +91,20 @@ echo "✓ Python dependencies installed"
 # ============================================================
 echo "[4/6] Setting up database..."
 if [ ! -f "$PICNIC_DB" ]; then
-    # Initialize database if it doesn't exist
+    # Initialize database if it doesn't exist. create_all only ever adds
+    # missing tables from current metadata, so a fresh database can never
+    # be reported as drifting (REQ-025 AC-025-02).
     python -c "from backend.database import init_db; init_db()"
     echo "✓ Database initialized"
 else
     echo "✓ Database already exists"
+    # Fail fast if the existing database is missing a table or column the
+    # models expect, printing the exact SQL to fix it (REQ-025). This must
+    # stay ahead of the frontend build and the restart below: set -e turns
+    # a non-zero exit here into an abort before either runs, so a drifted
+    # database never gets new code restarted on top of it.
+    python -m backend.schema_check
+    echo "✓ Schema matches models, no drift"
 fi
 
 # ============================================================
