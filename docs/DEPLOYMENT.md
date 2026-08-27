@@ -354,7 +354,7 @@ host only — dev/staging keeps the path-based scheme unchanged (it has no
    mkdir -p /var/www/virtual/mattmaxx/picnic.matt-maxx.de
    ```
    No `.htaccess` is created by hand: every deploy writes one into this
-   directory containing the SPA deep-link fallback (REQ-021), and would
+   directory containing the SPA deep-link fallback (REQ-023), and would
    overwrite a hand-written file anyway.
 5. **Add the four lines** shown in the `.env` example above to
    `~/picnic/.env` on the production host, then run a normal deploy
@@ -364,7 +364,7 @@ host only — dev/staging keeps the path-based scheme unchanged (it has no
    curl https://picnic.matt-maxx.de/health         # → {"status":"ok"}
    curl https://picnic.matt-maxx.de/api/stats/summary  # → 401 (unauthenticated, expected)
    curl -o /dev/null -w '%{http_code}\n' https://picnic.matt-maxx.de/stats
-   # → 200 (SPA fallback; a 404 means the .htaccess is missing, see REQ-021)
+   # → 200 (SPA fallback; a 404 means the .htaccess is missing, see REQ-023)
    ```
    and open `https://picnic.matt-maxx.de/` in a browser, navigate to
    *Statistiken* and press reload — the page must come back, not a 404.

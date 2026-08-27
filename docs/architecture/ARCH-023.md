@@ -1,9 +1,9 @@
-# ARCH-021 — Deploy-Generated SPA Fallback for the Published Frontend
+# ARCH-023 — Deploy-Generated SPA Fallback for the Published Frontend
 
 **Status:** approved
 **Created:** 2026-08-27
-**Traces:** REQ-021
-**Verified by:** TEST-021
+**Traces:** REQ-023
+**Verified by:** TEST-023
 
 ## Summary
 
@@ -39,7 +39,7 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.html [L]
 ```
 
-The two `RewriteCond` lines are what satisfies AC-021-02: an existing asset
+The two `RewriteCond` lines are what satisfies AC-023-02: an existing asset
 resolves to a real filename and is served directly; only genuinely
 non-existent paths reach the rewrite.
 
@@ -53,7 +53,7 @@ of returning a 500.
 ### Call site in `scripts/deploy.sh`
 
 Invoked in step 5 directly after `cp -r "$FRONTEND_BUILD"/. "$FRONTEND_PUBLISH_DIR/"`.
-Writing it *after* the copy is what satisfies AC-021-04 — the preceding
+Writing it *after* the copy is what satisfies AC-023-04 — the preceding
 `rm -rf`/`cp` cannot clobber it, and any stale hand-written `.htaccess` is
 replaced by the generated one.
 

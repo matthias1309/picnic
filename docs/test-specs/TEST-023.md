@@ -1,15 +1,15 @@
-# TEST-021 — Deep Links Survive Browser Reload and Back Navigation
+# TEST-023 — Deep Links Survive Browser Reload and Back Navigation
 
 **Status:** approved
 **Created:** 2026-08-27
-**Traces:** ARCH-021
-**Verifies:** REQ-021 (AC-021-01, AC-021-02, AC-021-03, AC-021-04)
+**Traces:** ARCH-023
+**Verifies:** REQ-023 (AC-023-01, AC-023-02, AC-023-03, AC-023-04)
 
 ## Test Cases
 
-### TC-021-01 — The published directory gets a fallback to index.html
+### TC-023-01 — The published directory gets a fallback to index.html
 
-**Maps to:** AC-021-01
+**Maps to:** AC-023-01
 **Type:** unit
 **File:** `backend/tests/test_deploy_spa_fallback.py`
 
@@ -26,9 +26,9 @@ Apache, milliseconds per test.
 
 ---
 
-### TC-021-02 — Existing files are excluded from the rewrite
+### TC-023-02 — Existing files are excluded from the rewrite
 
-**Maps to:** AC-021-02
+**Maps to:** AC-023-02
 **Type:** unit
 **File:** `backend/tests/test_deploy_spa_fallback.py`
 
@@ -41,14 +41,14 @@ Then the rewrite is guarded by "not an existing file" and "not an existing
 
 **Notes:** The guard is asserted at the configuration level. Actually
 resolving a request through Apache is out of scope for a unit test; the
-served behaviour is verified once manually after deploy (AC-021-01/02 in
+served behaviour is verified once manually after deploy (AC-023-01/02 in
 `docs/DEPLOYMENT.md`).
 
 ---
 
-### TC-021-03 — RewriteBase follows the host's frontend base path
+### TC-023-03 — RewriteBase follows the host's frontend base path
 
-**Maps to:** AC-021-03
+**Maps to:** AC-023-03
 **Type:** unit
 **File:** `backend/tests/test_deploy_spa_fallback.py`
 
@@ -60,9 +60,9 @@ Then the generated configuration bases the rewrite at exactly that path
 
 ---
 
-### TC-021-04 — A stale hand-written configuration is replaced
+### TC-023-04 — A stale hand-written configuration is replaced
 
-**Maps to:** AC-021-04
+**Maps to:** AC-023-04
 **Type:** unit
 **File:** `backend/tests/test_deploy_spa_fallback.py`
 
@@ -73,7 +73,7 @@ When write_spa_fallback is invoked for that directory
 Then the file is overwritten with the generated configuration
 ```
 
-**Notes:** Covers the deploy-order half of AC-021-04 at the unit level. That
+**Notes:** Covers the deploy-order half of AC-023-04 at the unit level. That
 `scripts/deploy.sh` calls the function after the `rm -rf` + `cp` publish step
-is verified by reading the script during code review (CR-021), not by
+is verified by reading the script during code review (CR-023), not by
 executing a full deploy in the test suite.

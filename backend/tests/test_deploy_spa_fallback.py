@@ -1,8 +1,8 @@
 """
-SPA deep-link fallback generation for scripts/deploy.sh (TEST-021).
+SPA deep-link fallback generation for scripts/deploy.sh (TEST-023).
 
-Traces: ARCH-021
-Verifies: REQ-021 (AC-021-01, AC-021-02, AC-021-03, AC-021-04)
+Traces: ARCH-023
+Verifies: REQ-023 (AC-023-01, AC-023-02, AC-023-03, AC-023-04)
 
 Mirrors test_deploy_env.py's approach: source deploy_lib.sh in a subprocess
 and invoke the function directly, so this stays SSH-free and fast.
@@ -32,7 +32,7 @@ def _write_spa_fallback(publish_dir: Path, base_path: str) -> str:
     return (publish_dir / ".htaccess").read_text()
 
 
-# TC-021-01
+# TC-023-01
 # Given an empty temp directory standing in for FRONTEND_PUBLISH_DIR
 # When write_spa_fallback <dir> / is invoked
 # Then <dir>/.htaccess exists
@@ -51,7 +51,7 @@ def test_write_spa_fallback_creates_htaccess_pointing_at_index(tmp_path):
     assert "RewriteRule . index.html [L]" in content
 
 
-# TC-021-02
+# TC-023-02
 # Given write_spa_fallback has written the fallback configuration
 # When the generated rules are inspected
 # Then the rewrite is guarded by "not an existing file" and "not an existing
@@ -69,7 +69,7 @@ def test_write_spa_fallback_excludes_existing_files_and_directories(tmp_path):
     assert "RewriteCond %{REQUEST_FILENAME} !-d" in content
 
 
-# TC-021-03
+# TC-023-03
 # Given the two base paths the project deploys with
 # When write_spa_fallback is invoked with "/" and with "/picnic-frontend/"
 # Then the generated configuration bases the rewrite at exactly that path
@@ -89,7 +89,7 @@ def test_write_spa_fallback_bases_rewrite_on_the_hosts_base_path(tmp_path):
     assert "RewriteBase /picnic-frontend/\n" in dev_content
 
 
-# TC-021-04
+# TC-023-04
 # Given a publish directory that already contains an .htaccess without a
 #   fallback rule (the hand-written "RewriteBase /" from the REQ-019 cutover)
 # When write_spa_fallback is invoked for that directory
