@@ -64,6 +64,37 @@ export interface ProductOut {
   id: number;
   name: string;
   purchase_count: number;
+  category_key: CategoryKey | null;
+}
+
+export type CategoryKey =
+  | "fruit"
+  | "vegetables"
+  | "dairy"
+  | "bakery"
+  | "meat"
+  | "fish"
+  | "frozen"
+  | "ready_meals"
+  | "beverages"
+  | "pantry"
+  | "sweets"
+  | "personal_care"
+  | "household"
+  | "other";
+
+export interface Category {
+  key: CategoryKey;
+  label: string;
+}
+
+export interface CategorySpending {
+  category_key: CategoryKey | null;
+  total_cents: number;
+}
+
+export interface ProductCategoryUpdate {
+  category_key: CategoryKey;
 }
 
 export interface ReceiptSummary {

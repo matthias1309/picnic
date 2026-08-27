@@ -75,6 +75,8 @@ class Product(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(512), unique=True, nullable=False, index=True)
+    category_key = Column(String(32), nullable=True, index=True)
+    category_is_manual = Column(Boolean, nullable=False, default=False, server_default="0")
     created_at = Column(
         DateTime, nullable=False, default=datetime.utcnow, server_default=func.now()
     )

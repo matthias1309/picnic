@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from backend.imap.parser import ParseError, ParsedReceipt, ReceiptParser
 from backend.models import PriceHistory, Product, Receipt, ReceiptItem
+from backend.services import category_service
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ def _get_or_create_product(db: Session, name: str) -> Product:
     """Look up a product by its exact name, creating it if it does not exist."""
     product = db.query(Product).filter(Product.name == name).first()
     if product is None:
-        product = Product(name=name)
+        product = Product(name=name, category_key=category_service.categorize(name))
         db.add(product)
         db.flush()
     return product

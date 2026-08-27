@@ -4,6 +4,8 @@ import type {
   BudgetSettingOut,
   BudgetSettingUpdate,
   BudgetStatus,
+  CategoryKey,
+  CategorySpending,
   PriceTrend,
   SpendingGranularity,
   SpendingOverTime,
@@ -36,17 +38,28 @@ export function useUpdateBudget() {
   });
 }
 
-export function useSpending(granularity: SpendingGranularity) {
+export function useSpending(granularity: SpendingGranularity, category?: CategoryKey) {
   return useQuery({
-    queryKey: ["stats", "spending", granularity],
-    queryFn: () => fetchJson<SpendingOverTime>("/stats/spending", { granularity }),
+    queryKey: ["stats", "spending", granularity, category],
+    queryFn: () => fetchJson<SpendingOverTime>("/stats/spending", { granularity, category }),
   });
 }
 
-export function useTopItems(limit: number = 10) {
+export function useTopItems(limit: number = 10, category?: CategoryKey) {
   return useQuery({
-    queryKey: ["stats", "top-items", limit],
-    queryFn: () => fetchJson<TopItem[]>("/stats/top-items", { limit }),
+    queryKey: ["stats", "top-items", limit, category],
+    queryFn: () => fetchJson<TopItem[]>("/stats/top-items", { limit, category }),
+  });
+}
+
+export function useSpendingByCategory(fromDate?: string, toDate?: string) {
+  return useQuery({
+    queryKey: ["stats", "by-category", fromDate, toDate],
+    queryFn: () =>
+      fetchJson<CategorySpending[]>("/stats/by-category", {
+        from_date: fromDate,
+        to_date: toDate,
+      }),
   });
 }
 
