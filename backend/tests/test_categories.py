@@ -362,3 +362,130 @@ def test_no_keyword_appears_twice():
 
     # Assert
     assert duplicates == []
+
+
+# TC-027-01
+# Scenario Outline:
+# When category_service.categorize("<name>") is called
+# Then it returns "canned"
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Edeka Herzstücke Tomaten stückig mediterran",
+        "Oro di Parma Bio Stückige Tomaten",
+        "Gut&Günstig Tomaten passiert",
+        "Gut&Günstig Getrocknete Tomaten in Öl",
+        "Gut&Günstig Grüne Oliven mit Chili & Knoblauch",
+        "Kühne Gewürzgurken",
+        "Hengstenberg Sandwich Gurken",
+        "Cornichons",
+    ],
+)
+def test_preserved_tomato_olive_and_pickle_products_are_canned(name):
+    # Arrange / Act
+    result = category_service.categorize(name)
+
+    # Assert
+    assert result == CategoryKey.CANNED
+
+
+# TC-027-02
+# Scenario Outline:
+# When category_service.categorize("<name>") is called
+# Then it returns "<category>"
+@pytest.mark.parametrize(
+    ("name", "category"),
+    [
+        ("Gut&Günstig Mandeln gehackt", "snacks"),
+        ("Meßmer Ingwer-Zitrone", "beverages"),
+        ("Teekanne Türkischer Apfel", "beverages"),
+        ("Mini Pflaumen Tomaten", "vegetables"),
+        ("Herta Hähnchenbrust Butter-Chicken", "meat"),
+        ("Dr. Oetker Chocolate Chunks", "baking"),
+    ],
+)
+def test_general_keywords_do_not_win_inside_unrelated_products(name, category):
+    # Arrange / Act
+    result = category_service.categorize(name)
+
+    # Assert
+    assert result == category
+
+
+# TC-027-03
+# Scenario Outline:
+# When category_service.categorize("<name>") is called
+# Then it returns "<category>"
+@pytest.mark.parametrize(
+    ("name", "category"),
+    [
+        ("Rana Tortelloni", "ready_meals"),
+        ("Steinhaus Tortelloni", "ready_meals"),
+        ("Nissin Cup Noodles", "ready_meals"),
+        ("Ostmann Paprika edelsüß", "condiments"),
+        ("Top Taste Röstzwiebeln", "condiments"),
+        ("Porree", "vegetables"),
+    ],
+)
+def test_previously_unmatched_foods_reach_their_category(name, category):
+    # Arrange / Act
+    result = category_service.categorize(name)
+
+    # Assert
+    assert result == category
+
+
+# TC-027-04
+# Scenario Outline:
+# When category_service.categorize("<name>") is called
+# Then it returns "<category>"
+@pytest.mark.parametrize(
+    ("name", "category"),
+    [
+        ("Finish Spezial-Salz", "household"),
+        ("Gut&Günstig Spezial Salz", "household"),
+        ("Surig Essigspray", "household"),
+        ("Drano Rohrfrei", "household"),
+        ("Power Cell E-Block", "household"),
+        ("Gut&Günstig Taschentücher Box 4-lagig", "personal_care"),
+        ("Purina One Bifensis mit Lachs", "other"),
+    ],
+)
+def test_non_food_products_leave_the_food_categories(name, category):
+    # Arrange / Act
+    result = category_service.categorize(name)
+
+    # Assert
+    assert result == category
+
+
+# TC-027-05
+# Scenario Outline:
+# When category_service.categorize("<name>") is called
+# Then it returns "<category>"
+@pytest.mark.parametrize(
+    ("name", "category"),
+    [
+        ("Natives Olivenöl extra", "condiments"),
+        ("Ölsardinen in Olivenöl", "fish"),
+        ("Thunfisch in Olivenöl", "fish"),
+        ("Salatgurke", "vegetables"),
+        ("Cherry Tomaten", "vegetables"),
+        ("Tomatenketchup", "condiments"),
+        ("Passierte Tomaten 500g", "canned"),
+        ("Hackfleisch gemischt", "meat"),
+        ("Teewurst fein", "meat"),
+        ("Studentenfutter", "snacks"),
+        ("Bio Butter 250g", "dairy"),
+        ("Paprika rot", "vegetables"),
+        ("Zwiebeln 1kg", "vegetables"),
+        ("Schokolade Zartbitter", "sweets"),
+        ("Speisesalz", "condiments"),
+    ],
+)
+def test_new_rules_do_not_change_products_the_old_rules_got_right(name, category):
+    # Arrange / Act
+    result = category_service.categorize(name)
+
+    # Assert
+    assert result == category
