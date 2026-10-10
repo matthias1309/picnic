@@ -581,3 +581,61 @@ def test_unknown_category_key_is_rejected(client, db_session):
     assert query_response.status_code == 422
     db_session.refresh(product)
     assert product.category_key is None
+
+
+# TC-026-01
+# Given the client is authenticated
+# When it requests GET /picnic/api/categories
+# Then the body contains the entries
+#   grains "Nudeln, Reis & Getreide", breakfast "Frühstück & Aufstriche",
+#   baking "Backzutaten", condiments "Gewürze, Öle & Saucen",
+#   canned "Konserven", snacks "Snacks & Nüsse"
+# And the entry with key "pantry" has the label "Sonstige Trockenware"
+def test_get_categories_includes_the_shelf_stable_split(client):
+    # Arrange
+    expected = {
+        "grains": "Nudeln, Reis & Getreide",
+        "breakfast": "Frühstück & Aufstriche",
+        "baking": "Backzutaten",
+        "condiments": "Gewürze, Öle & Saucen",
+        "canned": "Konserven",
+        "snacks": "Snacks & Nüsse",
+        "pantry": "Sonstige Trockenware",
+    }
+
+    # Act
+    response = client.get(f"{BASE}/categories")
+
+    # Assert
+    assert response.status_code == 200
+    labels = {entry["key"]: entry["label"] for entry in response.json()}
+    assert {key: labels.get(key) for key in expected} == expected
+
+
+# TC-026-08
+# Given a receipt with items of a "snacks" product (2,00 €) and a "grains" product (3,00 €)
+# When the client requests GET /picnic/api/stats/spending?granularity=month&category=snacks
+# Then a 200 response is returned
+# And the only bucket's total_cents is 200
+def test_spending_filter_accepts_a_new_category(client, db_session):
+    # Arrange
+    snacks = Product(name="Paprika Chips", category_key=CategoryKey.SNACKS)
+    grains = Product(name="Basmati Reis 1kg", category_key=CategoryKey.GRAINS)
+    receipt = _make_receipt("cat026@picnic.app", datetime(2026, 6, 10, 12, 0))
+    db_session.add_all(
+        [
+            receipt,
+            _make_item(receipt, snacks, quantity=1, unit_price_cents=200),
+            _make_item(receipt, grains, quantity=1, unit_price_cents=300),
+        ]
+    )
+    db_session.commit()
+
+    # Act
+    response = client.get(
+        f"{BASE}/stats/spending", params={"granularity": "month", "category": "snacks"}
+    )
+
+    # Assert
+    assert response.status_code == 200
+    assert [bucket["total_cents"] for bucket in response.json()["buckets"]] == [200]

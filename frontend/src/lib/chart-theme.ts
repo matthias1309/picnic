@@ -30,6 +30,13 @@ export const CATEGORY_COLORS: Record<CategoryKey | "uncategorized", string> = {
   frozen: "#7ba7d7",
   ready_meals: "#8064a2",
   beverages: "#3aa6a0",
+  // REQ-026: picked to maximise the OKLab distance to every existing colour.
+  grains: "#a2bb40",
+  breakfast: "#e1998c",
+  baking: "#cb91f4",
+  condiments: "#697b1a",
+  canned: "#9e77dc",
+  snacks: "#3dca8d",
   pantry: "#9c8061",
   sweets: "#d96ba0",
   personal_care: "#6f9bd1",

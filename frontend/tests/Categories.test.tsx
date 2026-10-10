@@ -146,3 +146,35 @@ describe("Articles page", () => {
     expect(putJson).toHaveBeenCalledWith("/products/3/category", { category_key: "sweets" });
   });
 });
+
+describe("Articles page — shelf-stable split (TEST-026)", () => {
+  // TC-026-09
+  // Given the API returns the categories including "snacks" (Snacks & Nüsse)
+  // And a product "Paprika Chips" with category_key "snacks"
+  // When the "Artikel" page is rendered
+  // Then the product's dropdown has the value "snacks"
+  // And it offers the option "Snacks & Nüsse"
+  it("should offer the new categories in the article dropdown", async () => {
+    // Arrange
+    const categories: Category[] = [
+      ...CATEGORIES_FIXTURE,
+      { key: "snacks", label: "Snacks & Nüsse" },
+    ];
+    const products: ProductOut[] = [
+      { id: 4, name: "Paprika Chips", purchase_count: 2, category_key: "snacks" },
+    ];
+    vi.spyOn(apiClient, "fetchJson").mockImplementation((path) => {
+      if (path === "/categories") return Promise.resolve(categories);
+      if (path === "/products") return Promise.resolve(products);
+      throw new Error(`unexpected path: ${path}`);
+    });
+
+    // Act
+    renderWithProviders(<ProductList />);
+
+    // Assert
+    const dropdown = await screen.findByRole("combobox", { name: "Kategorie für Paprika Chips" });
+    expect(dropdown).toHaveValue("snacks");
+    expect(within(dropdown).getByRole("option", { name: "Snacks & Nüsse" })).toBeInTheDocument();
+  });
+});
