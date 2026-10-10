@@ -2,7 +2,7 @@
 Product categorisation: the fixed category set, the keyword rules that assign
 it, and the read/write helpers around Product.category_key.
 
-Traces: ARCH-024, ARCH-026
+Traces: ARCH-024, ARCH-026, ARCH-027
 """
 
 from enum import StrEnum
@@ -95,6 +95,46 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("reiswaffel", CategoryKey.SNACKS),
     ("kichererbsen", CategoryKey.GRAINS),
     ("backkakao", CategoryKey.BAKING),
+    # REQ-027: gaps found in the live data. Pet food first, so "Purina Sardinen"
+    # is not fish.
+    ("tierfutter", CategoryKey.OTHER),
+    ("katzenfutter", CategoryKey.OTHER),
+    ("hundefutter", CategoryKey.OTHER),
+    ("purina", CategoryKey.OTHER),  # brand: the name has no generic pet-food word
+    ("tomaten stückig", CategoryKey.CANNED),
+    ("stückige tomaten", CategoryKey.CANNED),
+    ("getrocknete tomaten", CategoryKey.CANNED),
+    ("pflaumentomate", CategoryKey.VEGETABLES),
+    ("pflaumen tomaten", CategoryKey.VEGETABLES),
+    # Fish in oil must beat "olivenöl", which must beat "oliven".
+    ("sardine", CategoryKey.FISH),
+    ("thunfisch", CategoryKey.FISH),
+    ("olivenöl", CategoryKey.CONDIMENTS),
+    ("oliven", CategoryKey.CANNED),
+    ("essiggurke", CategoryKey.CANNED),
+    ("gewürzgurke", CategoryKey.CANNED),
+    ("sandwich gurken", CategoryKey.CANNED),
+    ("cornichon", CategoryKey.CANNED),
+    ("essigspray", CategoryKey.HOUSEHOLD),
+    ("essigreiniger", CategoryKey.HOUSEHOLD),
+    ("spezial-salz", CategoryKey.HOUSEHOLD),
+    ("spezial salz", CategoryKey.HOUSEHOLD),
+    # Not in the household block: dairy's "ei " matches "Rohrfrei Power".
+    ("rohrfrei", CategoryKey.HOUSEHOLD),
+    ("mandeln gehackt", CategoryKey.SNACKS),
+    ("gehackte mandeln", CategoryKey.SNACKS),
+    ("butter-chicken", CategoryKey.MEAT),
+    ("butter chicken", CategoryKey.MEAT),
+    # "chocolate" contains "cola".
+    ("chocolate chunks", CategoryKey.BAKING),
+    ("chocolate", CategoryKey.SWEETS),
+    # "tee" must precede the fruit and dairy keywords ("Apfeltee").
+    ("teewurst", CategoryKey.MEAT),
+    ("tee", CategoryKey.BEVERAGES),
+    ("meßmer", CategoryKey.BEVERAGES),  # brand: tea only, no generic word in the name
+    ("edelsüß", CategoryKey.CONDIMENTS),
+    ("paprikapulver", CategoryKey.CONDIMENTS),
+    ("röstzwiebel", CategoryKey.CONDIMENTS),
     # -- compounds whose first word belongs elsewhere ---------------------
     # "Apfelsaft" is a beverage, not fruit; "Erdbeerjoghurt" is dairy, not
     # fruit; "Paprika Chips" is a snack, "Gemüsebrühe" a condiment. These must
@@ -110,7 +150,7 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("chips", CategoryKey.SNACKS),
     ("ketchup", CategoryKey.CONDIMENTS),
     ("tomatenmark", CategoryKey.CONDIMENTS),
-    ("passierte tomaten", CategoryKey.CANNED),
+    ("passiert", CategoryKey.CANNED),
     ("gehackte tomaten", CategoryKey.CANNED),
     ("brühe", CategoryKey.CONDIMENTS),
     ("essig", CategoryKey.CONDIMENTS),
@@ -119,6 +159,8 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("fertiggericht", CategoryKey.READY_MEALS),
     ("auflauf", CategoryKey.READY_MEALS),
     ("lasagne", CategoryKey.READY_MEALS),
+    ("tortelloni", CategoryKey.READY_MEALS),
+    ("cup noodles", CategoryKey.READY_MEALS),
     ("maultaschen", CategoryKey.READY_MEALS),
     ("suppe", CategoryKey.READY_MEALS),
     ("salatbowl", CategoryKey.READY_MEALS),
@@ -161,6 +203,7 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("champignon", CategoryKey.VEGETABLES),
     ("pilze", CategoryKey.VEGETABLES),
     ("lauch", CategoryKey.VEGETABLES),
+    ("porree", CategoryKey.VEGETABLES),
     ("sellerie", CategoryKey.VEGETABLES),
     ("kohlrabi", CategoryKey.VEGETABLES),
     ("rucola", CategoryKey.VEGETABLES),
@@ -202,14 +245,12 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("schnitzel", CategoryKey.MEAT),
     # -- fish ----------------------------------------------------------------
     ("lachs", CategoryKey.FISH),
-    ("thunfisch", CategoryKey.FISH),
     ("forelle", CategoryKey.FISH),
     ("garnele", CategoryKey.FISH),
     ("shrimp", CategoryKey.FISH),
     ("hering", CategoryKey.FISH),
     ("makrele", CategoryKey.FISH),
     ("kabeljau", CategoryKey.FISH),
-    ("sardine", CategoryKey.FISH),
     ("fisch", CategoryKey.FISH),
     # -- beverages ------------------------------------------------------------
     ("wasser", CategoryKey.BEVERAGES),
@@ -219,7 +260,6 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("wein", CategoryKey.BEVERAGES),
     ("kaffee", CategoryKey.BEVERAGES),
     ("espresso", CategoryKey.BEVERAGES),
-    ("tee", CategoryKey.BEVERAGES),
     ("smoothie", CategoryKey.BEVERAGES),
     ("schorle", CategoryKey.BEVERAGES),
     ("kakao", CategoryKey.BEVERAGES),
@@ -293,7 +333,7 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("windel", CategoryKey.PERSONAL_CARE),
     ("binden", CategoryKey.PERSONAL_CARE),
     ("tampon", CategoryKey.PERSONAL_CARE),
-    ("taschentuch", CategoryKey.PERSONAL_CARE),
+    ("taschentü", CategoryKey.PERSONAL_CARE),
     # -- household -------------------------------------------------------------------
     ("waschmittel", CategoryKey.HOUSEHOLD),
     ("weichspüler", CategoryKey.HOUSEHOLD),
@@ -305,6 +345,7 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("frischhaltefolie", CategoryKey.HOUSEHOLD),
     ("batterie", CategoryKey.HOUSEHOLD),
     ("kerze", CategoryKey.HOUSEHOLD),
+    ("e-block", CategoryKey.HOUSEHOLD),
     # -- storage form, last: only what nothing else claimed ---------------------------
     ("tiefkühl", CategoryKey.FROZEN),
     ("tk-", CategoryKey.FROZEN),
