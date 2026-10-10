@@ -288,3 +288,28 @@ def test_top_items_can_be_filtered_by_category(db_session):
 
     # Assert
     assert [product.name for product, _, _ in top_items] == ["Apfelsaft 1L"]
+
+
+# TC-026-07
+# Given a receipt with items of a "grains" product (3,00 €) and a "snacks" product (2,00 €)
+# When stats_service.get_spending_by_category(db) is called
+# Then the buckets are [("grains", 300), ("snacks", 200)]
+def test_spending_by_category_reports_new_categories_separately(db_session):
+    # Arrange
+    grains = Product(name="Basmati Reis 1kg", category_key=CategoryKey.GRAINS)
+    snacks = Product(name="Paprika Chips", category_key=CategoryKey.SNACKS)
+    receipt = _make_receipt("cat026@picnic.app", datetime(2026, 6, 10, 12, 0))
+    db_session.add_all(
+        [
+            receipt,
+            _make_item(receipt, grains, quantity=1, unit_price_cents=300),
+            _make_item(receipt, snacks, quantity=1, unit_price_cents=200),
+        ]
+    )
+    db_session.commit()
+
+    # Act
+    buckets = stats_service.get_spending_by_category(db_session)
+
+    # Assert
+    assert buckets == [(CategoryKey.GRAINS, 300), (CategoryKey.SNACKS, 200)]

@@ -2,7 +2,7 @@
 Product categorisation: the fixed category set, the keyword rules that assign
 it, and the read/write helpers around Product.category_key.
 
-Traces: ARCH-024
+Traces: ARCH-024, ARCH-026
 """
 
 from enum import StrEnum
@@ -13,7 +13,7 @@ from backend.models import Product
 
 
 class CategoryKey(StrEnum):
-    """The fixed set of product categories (AC-024-06)."""
+    """The fixed set of product categories (AC-024-06, AC-026-01)."""
 
     FRUIT = "fruit"
     VEGETABLES = "vegetables"
@@ -24,6 +24,12 @@ class CategoryKey(StrEnum):
     FROZEN = "frozen"
     READY_MEALS = "ready_meals"
     BEVERAGES = "beverages"
+    GRAINS = "grains"
+    BREAKFAST = "breakfast"
+    BAKING = "baking"
+    CONDIMENTS = "condiments"
+    CANNED = "canned"
+    SNACKS = "snacks"
     PANTRY = "pantry"
     SWEETS = "sweets"
     PERSONAL_CARE = "personal_care"
@@ -41,7 +47,15 @@ CATEGORY_LABELS: dict[CategoryKey, str] = {
     CategoryKey.FROZEN: "Tiefkühl",
     CategoryKey.READY_MEALS: "Fertiggerichte",
     CategoryKey.BEVERAGES: "Getränke",
-    CategoryKey.PANTRY: "Trockenware",
+    CategoryKey.GRAINS: "Nudeln, Reis & Getreide",
+    CategoryKey.BREAKFAST: "Frühstück & Aufstriche",
+    CategoryKey.BAKING: "Backzutaten",
+    CategoryKey.CONDIMENTS: "Gewürze, Öle & Saucen",
+    CategoryKey.CANNED: "Konserven",
+    CategoryKey.SNACKS: "Snacks & Nüsse",
+    # Kept as a catch-all so manual assignments from before the split stay
+    # valid without a data migration (ARCH-026 Key Decision 2).
+    CategoryKey.PANTRY: "Sonstige Trockenware",
     CategoryKey.SWEETS: "Süßwaren",
     CategoryKey.PERSONAL_CARE: "Körperpflege",
     CategoryKey.HOUSEHOLD: "Haushalt",
@@ -52,36 +66,54 @@ UNCATEGORIZED_LABEL = "Nicht zugeordnet"
 
 # Ordered: the first keyword found in the product name wins.
 #
-# Two ordering constraints are load-bearing and covered by TC-024-04:
+# Three ordering constraints are load-bearing:
 #   1. False friends come before the general keyword they contain
-#      ("kokosmilch" before "milch").
+#      ("kokosmilch" before "milch"). TC-026-11 checks this for every rule.
 #   2. What a product *is* beats how it is stored: a frozen pizza is a ready
 #      meal, frozen peas are vegetables. So type keywords precede the
 #      storage keywords, and FROZEN only catches what nothing else claims.
+#   3. The shelf-stable blocks run from specific to generic, and the short,
+#      collision-prone keywords (salz, öl, pfeffer) come last, after every
+#      longer keyword that contains them ("salzstangen", "erdnüsse").
 CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     # -- false friends, before their general keyword --------------------
-    ("kokosmilch", CategoryKey.PANTRY),
+    ("kokosmilch", CategoryKey.CANNED),
     ("mandelmilch", CategoryKey.BEVERAGES),
     ("hafermilch", CategoryKey.BEVERAGES),
     ("sojamilch", CategoryKey.BEVERAGES),
     ("milchreis", CategoryKey.SWEETS),
     ("milchschnitte", CategoryKey.SWEETS),
-    ("erdnussbutter", CategoryKey.PANTRY),
+    ("erdnussbutter", CategoryKey.BREAKFAST),
     ("buttermilch", CategoryKey.DAIRY),
     ("fischstäbchen", CategoryKey.FISH),
     ("seife", CategoryKey.PERSONAL_CARE),
     ("spülmittel", CategoryKey.HOUSEHOLD),
+    ("zahnpasta", CategoryKey.PERSONAL_CARE),
+    ("wassereis", CategoryKey.SWEETS),
+    ("nektarine", CategoryKey.FRUIT),
+    ("preiselbeer", CategoryKey.BREAKFAST),
+    ("reiswaffel", CategoryKey.SNACKS),
+    ("kichererbsen", CategoryKey.GRAINS),
+    ("backkakao", CategoryKey.BAKING),
     # -- compounds whose first word belongs elsewhere ---------------------
     # "Apfelsaft" is a beverage, not fruit; "Erdbeerjoghurt" is dairy, not
-    # fruit. These must precede the fruit keywords they start with.
+    # fruit; "Paprika Chips" is a snack, "Gemüsebrühe" a condiment. These must
+    # precede the fresh-food keywords they contain.
     ("saft", CategoryKey.BEVERAGES),
     ("nektar", CategoryKey.BEVERAGES),
     ("joghurt", CategoryKey.DAIRY),
     ("quark", CategoryKey.DAIRY),
     ("skyr", CategoryKey.DAIRY),
-    ("marmelade", CategoryKey.PANTRY),
-    ("konfitüre", CategoryKey.PANTRY),
+    ("marmelade", CategoryKey.BREAKFAST),
+    ("konfitüre", CategoryKey.BREAKFAST),
     ("eis am stiel", CategoryKey.SWEETS),
+    ("chips", CategoryKey.SNACKS),
+    ("ketchup", CategoryKey.CONDIMENTS),
+    ("tomatenmark", CategoryKey.CONDIMENTS),
+    ("passierte tomaten", CategoryKey.CANNED),
+    ("gehackte tomaten", CategoryKey.CANNED),
+    ("brühe", CategoryKey.CONDIMENTS),
+    ("essig", CategoryKey.CONDIMENTS),
     # -- ready meals, before the frozen/storage keywords -----------------
     ("pizza", CategoryKey.READY_MEALS),
     ("fertiggericht", CategoryKey.READY_MEALS),
@@ -108,7 +140,6 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("melone", CategoryKey.FRUIT),
     ("kiwi", CategoryKey.FRUIT),
     ("pfirsich", CategoryKey.FRUIT),
-    ("nektarine", CategoryKey.FRUIT),
     ("pflaume", CategoryKey.FRUIT),
     ("ananas", CategoryKey.FRUIT),
     # -- vegetables ------------------------------------------------------
@@ -135,10 +166,9 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("rucola", CategoryKey.VEGETABLES),
     ("kürbis", CategoryKey.VEGETABLES),
     ("gemüse", CategoryKey.VEGETABLES),
+    ("grüne bohnen", CategoryKey.VEGETABLES),
     # -- dairy ------------------------------------------------------------
     ("milch", CategoryKey.DAIRY),
-    ("joghurt", CategoryKey.DAIRY),
-    ("quark", CategoryKey.DAIRY),
     ("käse", CategoryKey.DAIRY),
     ("gouda", CategoryKey.DAIRY),
     ("mozzarella", CategoryKey.DAIRY),
@@ -147,7 +177,6 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("sahne", CategoryKey.DAIRY),
     ("schmand", CategoryKey.DAIRY),
     ("frischkäse", CategoryKey.DAIRY),
-    ("skyr", CategoryKey.DAIRY),
     ("ei ", CategoryKey.DAIRY),
     ("eier", CategoryKey.DAIRY),
     # -- bakery ------------------------------------------------------------
@@ -180,10 +209,10 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("hering", CategoryKey.FISH),
     ("makrele", CategoryKey.FISH),
     ("kabeljau", CategoryKey.FISH),
+    ("sardine", CategoryKey.FISH),
     ("fisch", CategoryKey.FISH),
     # -- beverages ------------------------------------------------------------
     ("wasser", CategoryKey.BEVERAGES),
-    ("saft", CategoryKey.BEVERAGES),
     ("cola", CategoryKey.BEVERAGES),
     ("limonade", CategoryKey.BEVERAGES),
     ("bier", CategoryKey.BEVERAGES),
@@ -193,45 +222,70 @@ CATEGORY_RULES: tuple[tuple[str, CategoryKey], ...] = (
     ("tee", CategoryKey.BEVERAGES),
     ("smoothie", CategoryKey.BEVERAGES),
     ("schorle", CategoryKey.BEVERAGES),
+    ("kakao", CategoryKey.BEVERAGES),
     # -- sweets ----------------------------------------------------------------
     ("schokolade", CategoryKey.SWEETS),
     ("schoko", CategoryKey.SWEETS),
     ("keks", CategoryKey.SWEETS),
     ("bonbon", CategoryKey.SWEETS),
     ("gummibär", CategoryKey.SWEETS),
-    ("chips", CategoryKey.SWEETS),
     ("eiscreme", CategoryKey.SWEETS),
     ("speiseeis", CategoryKey.SWEETS),
-    ("wassereis", CategoryKey.SWEETS),
     ("kuchen", CategoryKey.SWEETS),
     ("riegel", CategoryKey.SWEETS),
     ("waffel", CategoryKey.SWEETS),
-    # -- pantry -----------------------------------------------------------------
-    ("nudel", CategoryKey.PANTRY),
-    ("pasta", CategoryKey.PANTRY),
-    ("spaghetti", CategoryKey.PANTRY),
-    ("reis", CategoryKey.PANTRY),
-    ("mehl", CategoryKey.PANTRY),
-    ("zucker", CategoryKey.PANTRY),
-    ("salz", CategoryKey.PANTRY),
-    ("pfeffer", CategoryKey.PANTRY),
-    ("öl", CategoryKey.PANTRY),
-    ("essig", CategoryKey.PANTRY),
-    ("linsen", CategoryKey.PANTRY),
-    ("bohnen", CategoryKey.PANTRY),
-    ("haferflocken", CategoryKey.PANTRY),
-    ("müsli", CategoryKey.PANTRY),
-    ("honig", CategoryKey.PANTRY),
-    ("marmelade", CategoryKey.PANTRY),
-    ("ketchup", CategoryKey.PANTRY),
-    ("senf", CategoryKey.PANTRY),
-    ("mayonnaise", CategoryKey.PANTRY),
-    ("passierte tomaten", CategoryKey.PANTRY),
-    ("konserve", CategoryKey.PANTRY),
+    # -- breakfast -------------------------------------------------------------------
+    ("haferflocken", CategoryKey.BREAKFAST),
+    ("müsli", CategoryKey.BREAKFAST),
+    ("cornflakes", CategoryKey.BREAKFAST),
+    ("granola", CategoryKey.BREAKFAST),
+    ("honig", CategoryKey.BREAKFAST),
+    ("nuss-nougat", CategoryKey.BREAKFAST),
+    # -- snacks --------------------------------------------------------------------------
+    ("salzstangen", CategoryKey.SNACKS),
+    ("salzbrezel", CategoryKey.SNACKS),
+    ("nüsse", CategoryKey.SNACKS),
+    ("cashew", CategoryKey.SNACKS),
+    ("mandeln", CategoryKey.SNACKS),
+    ("studentenfutter", CategoryKey.SNACKS),
+    ("cracker", CategoryKey.SNACKS),
+    ("popcorn", CategoryKey.SNACKS),
+    # -- baking ----------------------------------------------------------------------------
+    ("mehl", CategoryKey.BAKING),
+    ("zucker", CategoryKey.BAKING),
+    ("backpulver", CategoryKey.BAKING),
+    ("hefe", CategoryKey.BAKING),
+    ("speisestärke", CategoryKey.BAKING),
+    # -- grains ------------------------------------------------------------------------------
+    ("nudel", CategoryKey.GRAINS),
+    ("pasta", CategoryKey.GRAINS),
+    ("spaghetti", CategoryKey.GRAINS),
+    ("penne", CategoryKey.GRAINS),
+    ("fusilli", CategoryKey.GRAINS),
+    ("reis", CategoryKey.GRAINS),
+    ("couscous", CategoryKey.GRAINS),
+    ("bulgur", CategoryKey.GRAINS),
+    ("quinoa", CategoryKey.GRAINS),
+    ("polenta", CategoryKey.GRAINS),
+    ("grieß", CategoryKey.GRAINS),
+    ("linsen", CategoryKey.GRAINS),
+    # -- canned --------------------------------------------------------------------------------
+    ("konserve", CategoryKey.CANNED),
+    ("bohnen", CategoryKey.CANNED),
+    ("mais", CategoryKey.CANNED),
+    ("dose", CategoryKey.CANNED),
+    # -- condiments, last of the shelf-stable blocks: shortest keywords ---------------------
+    ("gewürz", CategoryKey.CONDIMENTS),
+    ("senf", CategoryKey.CONDIMENTS),
+    ("mayonnaise", CategoryKey.CONDIMENTS),
+    ("pesto", CategoryKey.CONDIMENTS),
+    ("sojasauce", CategoryKey.CONDIMENTS),
+    ("pfeffer", CategoryKey.CONDIMENTS),
+    ("salz", CategoryKey.CONDIMENTS),
+    ("öl", CategoryKey.CONDIMENTS),
     # -- personal care -------------------------------------------------------------
     ("shampoo", CategoryKey.PERSONAL_CARE),
     ("duschgel", CategoryKey.PERSONAL_CARE),
-    ("zahnpasta", CategoryKey.PERSONAL_CARE),
     ("zahnbürste", CategoryKey.PERSONAL_CARE),
     ("deo", CategoryKey.PERSONAL_CARE),
     ("rasier", CategoryKey.PERSONAL_CARE),
@@ -261,7 +315,9 @@ def categorize(name: str) -> CategoryKey | None:
     """Return the first category whose keyword occurs in the product name."""
     haystack = name.casefold()
     for keyword, category in CATEGORY_RULES:
-        if keyword in haystack:
+        # casefold() turns "ß" into "ss", so the keyword must be folded the
+        # same way or "grieß" could never match.
+        if keyword.casefold() in haystack:
             return category
     return None
 

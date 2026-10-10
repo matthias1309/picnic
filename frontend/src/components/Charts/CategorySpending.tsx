@@ -20,7 +20,7 @@ interface ChartRow {
 }
 
 /**
- * Ranked bars rather than a pie: with 14 categories plus the uncategorised
+ * Ranked bars rather than a pie: with 20 categories plus the uncategorised
  * bucket, pie slices are too small to label or compare (ARCH-024 KD 5).
  */
 function toChartRows(buckets: CategorySpendingBucket[], categories: Category[]): ChartRow[] {
